@@ -148,6 +148,7 @@ export class World {
    */
   step(dt, inp) {
     const P = PHYS, p = this.p;
+    this.events.length = 0;
     if (this.finished) return;
     const any = inp.left || inp.right || inp.jumpPressed || inp.grapplePressed;
     if (!this.started && any && this.dead <= 0) this.started = true;
