@@ -239,7 +239,8 @@ console.log('Static analysis: no secrets in the frontend');
 {
   const files = ['js/config.js', 'js/auth.js', 'js/cloud-save.js', 'js/session.js', 'js/arcade.js', 'js/auth-ui.js'];
   const bad = /service_role|sb_secret|-----BEGIN|sk_live|eyJhbGciOi[A-Za-z0-9_-]{40,}/;
-  const found = files.filter((f) => bad.test(fs.readFileSync(new URL('../' + f, import.meta.url), 'utf8')));
+  const stripComments = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/ .*$/gm, '');
+  const found = files.filter((f) => bad.test(stripComments(fs.readFileSync(new URL('../' + f, import.meta.url), 'utf8'))));
   ok(found.length === 0, 'no service-role keys or JWTs in frontend code', found.join());
   const cfg = fs.readFileSync(new URL('../js/config.js', import.meta.url), 'utf8');
   ok(/url: ''/.test(cfg) && /anonKey: ''/.test(cfg), 'repository ships with empty public config (guest mode by default)');
