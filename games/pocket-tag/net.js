@@ -9,7 +9,10 @@
 import { Track, Ticker, num, int } from '../../js/multiplayer.js';
 
 const EVENTS = new Set(['tag', 'thaw', 'pickup', 'shield', 'go', 'end', 'left', 'it', 'crown', 'fall', 'respawn']);
-const POS_HZ = 10, BOT_HZ = 10, RULES_HZ = 4;
+// Network budget (tune these if you hit your realtime plan's limits; interpolation hides lower rates).
+//   POS_HZ   each player's own position   (idle players send at IDLE_HZ)
+//   HOST_HZ  host: bots + rules in ONE message; rules ride along every RULES_EVERY-th message or immediately after an event
+const POS_HZ = 8, IDLE_HZ = 2, HOST_HZ = 8, RULES_EVERY = 2;
 
 export class NetSession {
   constructor({ room, world, myIdx, keyToIdx, onEvent, onEnd }) {
@@ -22,7 +25,7 @@ export class NetSession {
     this.seq = 0; this.lastSeq = new Map(); this.rulesSeq = 0;
     const humans = [...keyToIdx.values()].length;
     const hz = humans >= 6 ? 8 : POS_HZ;
-    this.posT = new Ticker(hz); this.botT = new Ticker(hz); this.rulesT = new Ticker(RULES_HZ);
+    this.posT = new Ticker(hz); this.hostT = new Ticker(HOST_HZ); this.hostN = 0; this.lastPos = null; this.lastPosAt = 0;
     this.awayAt = new Map();
     this.forceRules = false;
     this.claimAt = new Map();
@@ -32,8 +35,7 @@ export class NetSession {
     const on = (ev, fn, opts) => this.offs.push(room.onMsg(ev, fn, opts));
     on('p', (d, from) => this.onPos(d, from));
     on('claim', (d, from) => this.onClaim(d, from));
-    on('bots', (d) => this.onBots(d), { hostOnly: true });
-    on('rules', (d) => this.onRules(d), { hostOnly: true });
+    on('ht', (d) => this.onHostTick(d), { hostOnly: true });
     on('ev', (d) => this.onEv(d), { hostOnly: true });
     on('corr', (d) => this.onCorr(d), { hostOnly: true });
     on('end', (d) => this.onEndMsg(d), { hostOnly: true });
@@ -58,6 +60,12 @@ export class NetSession {
       const ok = w.setRemote(i, s);
       if (!ok) { const p = w.players[i]; if (p && p.corr) { this.room.send('corr', { i, x: Math.round(p.corr.x), y: Math.round(p.corr.y) }); p.corr = null; } }
     } else w.setRemote(i, s);
+  }
+
+  onHostTick(d) {
+    if (!d || typeof d !== 'object') return;
+    if (d.b) this.onBots(d);
+    if (d.r) this.onRules(d);
   }
 
   onBots(d) {
@@ -132,24 +140,32 @@ export class NetSession {
       const out = evs.filter((e) => EVENTS.has(e.k));
       if (out.length) { this.room.send('ev', out.slice(0, 20)); this.forceRules = true; }
     }
-    if (this.botT.tick(dt)) this.sendBots();
-    if (this.forceRules || this.rulesT.tick(dt)) { this.forceRules = false; this.sendRules(); }
+    if (this.forceRules) { this.forceRules = false; this.hostT.acc = 0; this.sendHost(true); }
+    else if (this.hostT.tick(dt)) this.sendHost(++this.hostN % RULES_EVERY === 0);
     this.checkPresence();
-    if (w.over && !this.endSent) { this.endSent = true; const r = w.results(); this.room.send('end', r); setTimeout(() => { if (this.room && !this.room.closed) { this.sendRules(); this.room.send('end', r); } }, 700); }
+    if (w.over && !this.endSent) { this.endSent = true; const r = w.results(); this.room.send('end', r); setTimeout(() => { if (this.room && !this.room.closed) { this.sendHost(true); this.room.send('end', r); } }, 700); }
   }
 
   sendPos() {
     const p = this.world.players[this.myIdx];
     if (!p || p.left || this.world.over) return;
-    this.room.send('p', [this.seq++, Math.round(p.x), Math.round(p.y), Math.round(p.z), Math.round(p.vx), Math.round(p.vy), p.flags, Math.round(p.stam)]);
+    const st = [Math.round(p.x), Math.round(p.y), Math.round(p.z), Math.round(p.vx), Math.round(p.vy), p.flags, Math.round(p.stam)];
+    const now = performance.now();
+    // standing still: a slow heartbeat is enough
+    if (this.lastPos && st.slice(0, 6).join() === this.lastPos.slice(0, 6).join() && now - this.lastPosAt < 1000 / IDLE_HZ) return;
+    this.lastPos = st; this.lastPosAt = now;
+    this.room.send('p', [this.seq++, st[0], st[1], st[2], st[3], st[4], st[5], st[6]]);
     this.stats.sent++;
   }
-  sendBots() {
+  /** One host message: bot positions, plus the rule snapshot when `withRules`. */
+  sendHost(withRules) {
     const list = [];
     for (const p of this.world.players) if (p.ctrl === 'bot' && !p.left) list.push([p.idx, Math.round(p.x), Math.round(p.y), Math.round(p.z), Math.round(p.vx), Math.round(p.vy), p.flags]);
-    if (list.length) this.room.send('bots', { n: this.seq, b: list });
+    const msg = { n: ++this.rulesSeq };
+    if (list.length) msg.b = list;
+    if (withRules) msg.r = this.world.exportRules();
+    this.room.send('ht', msg);
   }
-  sendRules() { this.room.send('rules', { n: ++this.rulesSeq, r: this.world.exportRules() }); }
 
   claim(a, b) {
     const key = a * 16 + b, now = performance.now();

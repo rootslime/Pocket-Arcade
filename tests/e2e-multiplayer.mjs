@@ -295,7 +295,7 @@ if (run('online')) {
   const d0 = JSON.parse(rt0), d1 = JSON.parse(rt1);
   const per = (k) => ((d1[k] || 0) - (d0[k] || 0)) / 3;
   const msgBytes = await A.evaluate(() => window.__mockRT.bytes);
-  ok(per('msg') > 10 && per('msg') < 40, `host sends ${per('msg').toFixed(0)} messages/s (positions 10 Hz + bots 10 Hz + rules 4 Hz)`);
+  ok(per('msg') > 10 && per('msg') < 40, `host sends ${per('msg').toFixed(0)} messages/s (positions 8 Hz + host tick 8 Hz)`);
   ok(msgBytes / Math.max(1, ((d1.msg || 0))) < 400, `messages are small (avg ${(msgBytes / Math.max(1, d1.msg || 1)).toFixed(0)} bytes)`);
   await A.screenshot({ path: '/tmp/mpA.png' });
 
@@ -314,11 +314,11 @@ if (run('online')) {
     await new Promise((r) => ch.subscribe((s) => { if (s === 'SUBSCRIBED') r(); }));
     const send = (e, d, f = 'evil.zzzz') => ch.send({ type: 'broadcast', event: 'msg', payload: { f, e, d } });
     // not a room member: everything is ignored
-    send('p', [1, 5, 5, 0, 0, 0, 0, 100]); send('rules', { n: 99999, r: { ph: 2, s: [] } }); send('end', { list: [] }); send('start', { id: 'x', roster: [] });
+    send('p', [1, 5, 5, 0, 0, 0, 0, 100]); send('ht', { n: 99999, r: { ph: 2, s: [] } }); send('end', { list: [] }); send('start', { id: 'x', roster: [] });
     send('claim', { a: 1, b: 0 }); send('corr', { i: 0, x: 0, y: 0 });
     // spoofing the host's key from a non-member is ignored too
-    send('rules', { n: 99999, r: { ph: 2, s: [] } }, 'aaaaaaaa1.fake');
-    send('bots', { b: [[0, 1, 1, 0, 0, 0, 0]] }, 'aaaaaaaa1.fake');
+    send('ht', { n: 99999, r: { ph: 2, s: [] } }, 'aaaaaaaa1.fake');
+    send('ht', { b: [[0, 1, 1, 0, 0, 0, 0]] }, 'aaaaaaaa1.fake');
     window.__ch = ch;
   }, `pa:room:pocketTag:${code}`);
   await sleep(700);
@@ -330,7 +330,7 @@ if (run('online')) {
   await B.evaluate(() => {
     const m = window.__pt.match; const r = m.room;
     r.send('p', ['x', NaN, Infinity, 'a']); r.send('p', [1, 1e9, -1e9, 99999, 1e9, 0, 255, 500]); r.send('claim', { a: 0, b: 99 }); r.send('claim', { a: 1, b: 1 });
-    r.send('ev', [{ k: 'drop-table' }, null, 5]); r.send('rules', { n: 1, r: { s: [[1e9]] } });   // not host: ignored by Room
+    r.send('ev', [{ k: 'drop-table' }, null, 5]); r.send('ht', { n: 1, r: { s: [[1e9]] } });   // not host: ignored by Room
   });
   await sleep(600);
   const g = await wv(A, (w) => ({ phase: w.phase, x: w.players[1].x, y: w.players[1].y, finite: w.players.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.score)) }));

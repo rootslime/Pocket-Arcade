@@ -81,3 +81,5 @@
 .mp-row i { font: 800 1rem var(--mono); font-style: normal; }
 .mp-peers { position: absolute; top: 6px; right: 8px; z-index: 5; display: grid; gap: 3px; min-width: 120px; padding: 6px 8px; border-radius: 10px; background: rgba(8, 9, 30, .7); font: 800 11px var(--font); pointer-events: none; }
 .mp-peers div { display: flex; justify-content: space-between; gap: 10px; } .mp-peers .out { opacity: .45; text-decoration: line-through; } .mp-peers .me b { color: var(--yellow); }
+
+.mp-wait { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 5; max-width: 92%; padding: 8px 14px; border-radius: 12px; background: rgba(8, 9, 30, .85); border: 1px solid var(--line); font: 800 .8rem var(--font); letter-spacing: .06em; text-align: center; pointer-events: none; }

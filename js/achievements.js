@@ -9,14 +9,14 @@
 //
 // FACTS reported by each game
 //  grappleRush   won, ms, falls, grapples
-//  neonDodge     secs, score, grazes, streak, picks, dashes
+//  neonDodge     secs, score, grazes, streak, picks, dashes · Last Standing: ls, win, players
 //  turboSnake    score, length, mode, bonus, ghost · battle: battle, win, rank, players, humans, len, eaten
-//  brickBlast    score, level, won, bricks, perfectLevel, combo
-//  asteroidDash  score, wave, saucers, chain, rocks, upgrades
+//  brickBlast    score, level, won, bricks, perfectLevel, combo · Brick Battle: battle, win, players
+//  asteroidDash  score, wave, saucers, chain, rocks, upgrades · Co-op: coop, wave, players
 //  dreamBoutique outfits, perfect, bestTheme, runScore, stars, colorStars, wins
 //  sweetheartCafe shift, served, perfectShift, bestCombo, tips, shiftsDone, won
 //  glamStudio    won, done, timeLeft, bonusDone, colorTheme
-//  driftCircuit  track, ms, lapMs, drift, megaDrifts, cleanLap, boosts, medal, clean
+//  driftCircuit  track, ms, lapMs, drift, megaDrifts, cleanLap, boosts, medal, clean · race: race, win, players, rank, photo, margin
 //  dungeonPocket rooms, kills, boss, noHitRoom, upgrades
 //  pocketTag     matches, humans, players, mode, map, diff, win, rank, tags, tagged, escape, held, thaws, pickups, score, finalSurvivor
 const A = (id, game, name, desc, icon, check) => ({ id, game, name, desc, icon, check });
@@ -59,6 +59,7 @@ export const ACHIEVEMENTS = [
   A('nd_streak', 'neonDodge', 'Streak Master', 'Reach a graze streak of 15.', '🔗', (f) => f.streak >= 15),
   A('nd_power', 'neonDodge', 'Power Player', 'Collect 5 power-ups in one run.', '🔋', (f) => f.picks >= 5),
   A('nd_score', 'neonDodge', 'High Roller', 'Score 3,000 points.', '💎', (f) => f.score >= 3000),
+  A('nd_standing', 'neonDodge', 'Last One Dodging', 'Win a Last Standing match.', '🏆', (f) => !!f.ls && !!f.win),
 
   // ---- Turbo Snake
   A('ts_first', 'turboSnake', 'First Bite', 'Eat your first food.', '🍎', (f) => f.length >= 4),
@@ -79,6 +80,7 @@ export const ACHIEVEMENTS = [
   A('bb_demo', 'brickBlast', 'Demolition Crew', 'Destroy 500 bricks in total.', '💥', (f, x) => (x.c.bricks || 0) >= 500),
   A('bb_power', 'brickBlast', 'Power Hungry', 'Catch 10 power-ups in total.', '🍬', (f, x) => (x.c.powerups || 0) >= 10),
   A('bb_win', 'brickBlast', 'Brick Champion', 'Clear all six levels.', '🏆', (f) => f.won),
+  A('bb_duel', 'brickBlast', 'Brick Duelist', 'Win a Brick Battle.', '⚔️', (f) => !!f.battle && !!f.win),
 
   // ---- Asteroid Dash
   A('ad_wave2', 'asteroidDash', 'Lift Off', 'Reach wave 2.', '🛰️', (f) => f.wave >= 2),
@@ -87,6 +89,7 @@ export const ACHIEVEMENTS = [
   A('ad_rocks', 'asteroidDash', 'Rock Smasher', 'Destroy 300 asteroids in total.', '☄️', (f, x) => (x.c.rocks || 0) >= 300),
   A('ad_chain', 'asteroidDash', 'Chain Reaction', 'Reach a kill chain of 8.', '⛓️', (f) => f.chain >= 8),
   A('ad_upgrades', 'asteroidDash', 'Fully Loaded', 'Collect 10 upgrades in total.', '🔧', (f, x) => (x.c.upgrades || 0) >= 10),
+  A('ad_coop', 'asteroidDash', 'Wingmates', 'Reach wave 5 together in Co-op.', '🤝', (f) => !!f.coop && f.wave >= 5 && f.players >= 2),
 
   // ---- Dream Boutique
   A('db_first', 'dreamBoutique', 'First Look', 'Complete your first outfit.', '👗', (f) => f.outfits >= 1),
@@ -122,6 +125,8 @@ export const ACHIEVEMENTS = [
   A('dc_gold', 'driftCircuit', 'Gold Medal', 'Earn a gold medal on any track.', '🥇', (f) => f.medal === 'gold'),
   A('dc_all', 'driftCircuit', 'Triple Threat', 'Finish all three tracks.', '🏁', (f, x) => ((x.c.t_neon || 0) > 0) && ((x.c.t_sunset || 0) > 0) && ((x.c.t_midnight || 0) > 0)),
   A('dc_boost', 'driftCircuit', 'Boost Junkie', 'Use boost 25 times in total.', '🔋', (f, x) => (x.c.boosts || 0) >= 25),
+  A('dc_victor', 'driftCircuit', 'Race Winner', 'Win a multiplayer race.', '🏁', (f) => !!f.race && !!f.win),
+  A('dc_photo', 'driftCircuit', 'Photo Finish', 'Win a multiplayer race by less than 0.3 seconds.', '📸', (f) => !!f.race && !!f.photo),
 
   // ---- Dungeon Pocket
   A('dp_10', 'dungeonPocket', 'Dungeon Crawler', 'Clear 10 rooms in one run.', '🗝️', (f) => f.rooms >= 10),
