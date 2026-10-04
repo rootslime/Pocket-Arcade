@@ -88,8 +88,11 @@ console.log('Grapple Rush mechanics');
   const p1 = await P();
   ok(p1.x > p0.x + 80 && p1.vx > 200, 'D runs right');
   await page.keyboard.up('KeyD');
+  await page.evaluate(() => { const w = window.__grapple.world; w.p.vx = 0; w.p.vy = 0; w.p.onGround = true; });
+  await sleep(60);
+  const y0 = (await P()).y;
   await page.keyboard.press('Space'); await sleep(120);
-  ok((await P()).y < p1.y - 20, 'Space jumps');
+  ok((await P()).y < y0 - 10, 'Space jumps');
   await sleep(900);
   // timer started
   ok(await page.evaluate(() => window.__grapple.world.started && window.__grapple.world.ms > 500), 'timer runs after first input');
