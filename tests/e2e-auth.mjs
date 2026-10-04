@@ -211,6 +211,8 @@ console.log('Login, cross-device sync, other users and password reset');
 console.log('Email confirmation, Google sign-in, offline');
 {
   const page = await open(); await page.waitForSelector('.cc'); await page.keyboard.press('Escape');
+  await page.evaluate(async () => { const m = await import('./js/auth.js'); await m.signOut(); });
+  await page.waitForSelector('.nav-signin');
   await page.evaluate(() => window.__mockSupabase.setConfirm(true));
   await signUp(page, 'Confirmy', 'c@example.com');
   await page.waitForSelector('.notice'); ok(/Check your email/.test(await modalText(page)), 'confirmation-required sign-up tells the user to check email');
