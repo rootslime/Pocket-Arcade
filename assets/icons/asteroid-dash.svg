@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Asteroid Dash artwork">
+<defs><radialGradient id="g" cx=".5" cy=".5" r=".8"><stop offset="0" stop-color="#14123f"/><stop offset="1" stop-color="#04040f"/></radialGradient>
+<filter id="b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+<rect width="240" height="150" fill="url(#g)"/>
+<g fill="#fff"><circle cx="20" cy="20" r="1"/><circle cx="60" cy="130" r="1.2"/><circle cx="130" cy="18" r="1"/><circle cx="220" cy="120" r="1.2"/><circle cx="200" cy="60" r="1"/><circle cx="30" cy="85" r="1"/></g>
+<g fill="none" stroke="#ffe14d" stroke-width="3" stroke-linejoin="round"><path d="M44 28l22-8 18 12 6 22-16 18-24-4-8-22z" filter="url(#b)" opacity=".6"/><path d="M44 28l22-8 18 12 6 22-16 18-24-4-8-22z"/></g>
+<g fill="none" stroke="#ff3cac" stroke-width="3" stroke-linejoin="round"><path d="M178 98l16-6 14 10-2 16-16 6-14-12z"/></g>
+<g fill="none" stroke="#8b5cff" stroke-width="2.5" stroke-linejoin="round"><path d="M196 30l9-3 7 6-2 9-9 3-6-7z"/></g>
+<path d="M120 100l-14 -8 0 0" fill="none"/>
+<g transform="translate(112 92) rotate(-30)"><path d="M0-18L12 14 0 8-12 14z" fill="#2de2e6" opacity=".35" filter="url(#b)"/><path d="M0-18L12 14 0 8-12 14z" fill="none" stroke="#d9ffff" stroke-width="3" stroke-linejoin="round"/><path d="M0 12l0 14" stroke="#ff8a3d" stroke-width="5" stroke-linecap="round"/></g>
+<g stroke="#5dff8f" stroke-width="3" stroke-linecap="round"><path d="M122 66l10-20"/><path d="M132 44l3-6" opacity=".5"/></g>
+</svg>

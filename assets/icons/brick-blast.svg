@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Brick Blast artwork">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a0a3f"/><stop offset="1" stop-color="#0a0d30"/></linearGradient>
+<filter id="b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+<rect width="240" height="150" fill="url(#g)"/>
+<g>
+<g fill="#ff3cac"><rect x="14" y="14" width="30" height="12" rx="2"/><rect x="48" y="14" width="30" height="12" rx="2"/><rect x="82" y="14" width="30" height="12" rx="2"/><rect x="116" y="14" width="30" height="12" rx="2"/><rect x="150" y="14" width="30" height="12" rx="2"/><rect x="184" y="14" width="30" height="12" rx="2"/></g>
+<g fill="#ff8a3d"><rect x="14" y="30" width="30" height="12" rx="2"/><rect x="48" y="30" width="30" height="12" rx="2"/><rect x="116" y="30" width="30" height="12" rx="2"/><rect x="150" y="30" width="30" height="12" rx="2"/><rect x="184" y="30" width="30" height="12" rx="2"/></g>
+<g fill="#ffe14d"><rect x="14" y="46" width="30" height="12" rx="2"/><rect x="82" y="46" width="30" height="12" rx="2"/><rect x="150" y="46" width="30" height="12" rx="2"/></g>
+<rect x="82" y="30" width="30" height="12" rx="2" fill="#8f96c8"/>
+</g>
+<path d="M150 118L116 84" stroke="#2de2e6" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"/>
+<circle cx="112" cy="80" r="9" fill="#2de2e6" filter="url(#b)"/><circle cx="112" cy="80" r="6" fill="#fff"/>
+<rect x="100" y="128" width="64" height="9" rx="4.5" fill="#5dff8f" filter="url(#b)"/><rect x="100" y="128" width="64" height="9" rx="4.5" fill="#d6ffe2"/>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Grapple Rush artwork">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1052"/><stop offset="1" stop-color="#3b1666"/></linearGradient>
+<filter id="b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+<rect width="240" height="150" fill="url(#g)"/>
+<circle cx="186" cy="38" r="20" fill="#ff3cac" opacity=".85"/>
+<g fill="#0a0820"><rect x="0" y="104" width="62" height="46"/><rect x="92" y="92" width="40" height="58"/><rect x="170" y="108" width="70" height="42"/></g>
+<g fill="#ffe14d" opacity=".8"><rect x="8" y="114" width="6" height="5"/><rect x="22" y="114" width="6" height="5"/><rect x="100" y="102" width="6" height="5"/><rect x="116" y="112" width="6" height="5"/><rect x="180" y="120" width="6" height="5"/></g>
+<path d="M120 12 Q96 42 78 70" stroke="#2de2e6" stroke-width="7" fill="none" opacity=".6" filter="url(#b)"/>
+<path d="M120 12 Q96 42 78 70" stroke="#d9ffff" stroke-width="2" fill="none"/>
+<circle cx="120" cy="12" r="6" fill="#ffe14d"/>
+<g transform="translate(78 70) rotate(-25)"><circle cx="0" cy="-9" r="5" fill="#fff"/><rect x="-4" y="-4" width="8" height="14" rx="3" fill="#2de2e6"/><path d="M-4 10l-6 8M4 10l7 6" stroke="#fff" stroke-width="3" stroke-linecap="round"/></g>
+</svg>
