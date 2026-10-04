@@ -528,7 +528,7 @@ console.log('Drift Circuit mechanics');
   await page.evaluate(() => { const r = window.__drift.race; r.car.x = r.track.pts[0].x + 4000; r.car.y = r.track.pts[0].y + 4000; });
   await sleep(300);
   ok(await page.evaluate(() => window.__drift.race.wallHits >= 1), 'driving far off the track hits the barrier');
-  await page.evaluate(() => { const r = window.__drift.race; r.lap = r.track.lap; r.progress = r.track.N * r.track.lap - 3; r.cpNext = r.track.cps.length; r.time = 61.5; r.driftTotal = 1250; const p = r.track.pts[r.track.N - 3]; r.car.x = p.x; r.car.y = p.y; r.car.idx = r.track.N - 3; r.lastIdx = r.track.N - 3; r.car.vx = 0; r.car.vy = 0; });
+  await page.evaluate(() => { const r = window.__drift.race; r.lap = r.track.lap; r.progress = r.track.N * r.track.lap - 3; r.cpNext = r.track.cps.length; r.time = 61.5; r.driftTotal = 1250; const p = r.track.pts[r.track.N - 3]; r.car.x = p.x; r.car.y = p.y; r.car.idx = r.track.N - 3; r.lastIdx = r.track.N - 3; r.car.vx = 0; r.car.vy = 0; const tn = r.track.tan[r.track.N - 3]; r.car.a = Math.atan2(tn.y, tn.x); r.car.surface = 'road'; });
   await page.keyboard.down('KeyW'); await sleep(1500); await page.keyboard.up('KeyW');
   await page.waitForSelector('.p-score', { timeout: 6000 });
   ok(/Medal|Complete/.test(await page.textContent('#g-panel-title')), 'finish shows results');
