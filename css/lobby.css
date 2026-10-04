@@ -63,3 +63,21 @@
 .lb .av-in svg { width: 100%; height: 100%; }
 .lb .av-letters { width: 100%; height: 100%; display: grid; place-items: center; font: 900 calc(var(--s) * .38) var(--font); color: #0a0c24; }
 @media (max-width: 420px) { .lb { padding: 8px; } .lb-card { padding: 16px 12px; } .lb-chip { min-height: 40px; } }
+
+/* Shared pieces for the multiplayer modes of the other games (js/mp-kit.js) */
+.mp-conn { position: fixed; top: calc(env(safe-area-inset-top) + 70px); left: 50%; transform: translateX(-50%); z-index: 36; padding: 5px 16px; border-radius: 99px; font: 900 .75rem var(--font); letter-spacing: .12em; background: rgba(255, 60, 110, .9); color: #fff; box-shadow: 0 4px 18px rgba(0, 0, 0, .5); }
+.mp-conn.reconnecting, .mp-conn.connecting { background: rgba(255, 190, 40, .95); color: #07081a; }
+.mp-conn[hidden] { display: none; }
+.mp-notice { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; padding: 14px; background: rgba(4, 5, 18, .82); }
+.mp-notice .g-panel p { margin: 0 0 16px; color: #cfd3f5; line-height: 1.45; }
+.mp-standings { margin: 6px 0 10px; text-align: left; }
+.mp-standings h3 { text-align: center; }
+.mp-standings ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.mp-row { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-radius: 10px; background: rgba(0, 0, 0, .28); }
+.mp-row.me { background: color-mix(in srgb, var(--accent) 24%, #101440); outline: 1px solid var(--accent); }
+.mp-medal { width: 1.8em; text-align: center; font-size: 1.15rem; }
+.mp-row b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-row small { color: var(--muted); font-weight: 600; }
+.mp-row i { font: 800 1rem var(--mono); font-style: normal; }
+.mp-peers { position: absolute; top: 6px; right: 8px; z-index: 5; display: grid; gap: 3px; min-width: 120px; padding: 6px 8px; border-radius: 10px; background: rgba(8, 9, 30, .7); font: 800 11px var(--font); pointer-events: none; }
+.mp-peers div { display: flex; justify-content: space-between; gap: 10px; } .mp-peers .out { opacity: .45; text-decoration: line-through; } .mp-peers .me b { color: var(--yellow); }

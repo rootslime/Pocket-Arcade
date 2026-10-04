@@ -163,7 +163,7 @@ export class Room extends Emitter {
 
   _meta() {
     const m = { pid: this.id.pid, name: this.id.name, lv: this.id.lv, av: this.id.av, bd: this.id.bd, rd: this.ready, jn: this.jn, ph: this.phase === 'playing' ? 'g' : 'l' };
-    if (this.isHost) m.s = this.settings;
+    if (this.isHost) { m.s = this.settings; m.pb = this.pub ? 1 : 0; }
     return m;
   }
   async _announce() { await this.link.track(this._meta()); }
@@ -180,22 +180,33 @@ export class Room extends Emitter {
   /** Rebuild members / host / settings from presence. */
   _refresh() {
     if (this.closed || !this.link) return;
+    // while we are offline our own view of presence is unreliable: keep the last known roster and host
+    if (this.link.state !== LINK.CONNECTED) return;
     const pres = this.link.presence();
     const next = new Map();
     for (const p of pres) {
       const pub = cleanPublicMeta(p.meta);
       if (!pub) continue;
       if (next.has(p.key)) continue;
-      next.set(p.key, { ...pub, rd: !!p.meta.rd, jn: int(p.meta.jn, 1, 9999, 1), ph: p.meta.ph === 'g' ? 'g' : 'l', s: p.meta.s });
+      next.set(p.key, { ...pub, rd: !!p.meta.rd, jn: int(p.meta.jn, 1, 9999, 1), ph: p.meta.ph === 'g' ? 'g' : 'l', s: p.meta.s, pb: p.meta.pb ? 1 : 0 });
     }
     const prevHost = this.hostKey;
     this.members = next;
     // host: sticky while present; otherwise the member who has been here longest takes over
-    if (!this.hostKey || !next.has(this.hostKey)) {
+    if (!this.hostKey) {
       const cand = [...next.entries()].sort((a, b) => a[1].jn - b[1].jn || (a[1].pid < b[1].pid ? -1 : 1))[0];
       this.hostKey = cand ? cand[0] : null;
-    }
+    } else if (!next.has(this.hostKey)) {
+      // the host vanished: wait a moment (a brief reconnect must not hand the room to someone else), then elect
+      const now = performance.now();
+      if (!this._hostGone) { this._hostGone = now; setTimeout(() => this._refresh(), 1700); }
+      if (now - this._hostGone >= 1600) {
+        const cand = [...next.entries()].sort((a, b) => a[1].jn - b[1].jn || (a[1].pid < b[1].pid ? -1 : 1))[0];
+        this.hostKey = cand ? cand[0] : null; this._hostGone = 0;
+      }
+    } else this._hostGone = 0;
     const host = this.hostKey ? next.get(this.hostKey) : null;
+    if (host && host.pb) this.pub = true;       // the room is listed for Quick Play; stays listed if we become host
     if (host && host.s) {
       const s = cleanSettings(this.schema, host.s, this.defaults);
       if (JSON.stringify(s) !== JSON.stringify(this.settings)) { this.settings = s; this.emit('settings', s); }

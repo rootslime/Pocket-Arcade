@@ -10,7 +10,7 @@
 // FACTS reported by each game
 //  grappleRush   won, ms, falls, grapples
 //  neonDodge     secs, score, grazes, streak, picks, dashes
-//  turboSnake    score, length, mode, bonus, ghost
+//  turboSnake    score, length, mode, bonus, ghost · battle: battle, win, rank, players, humans, len, eaten
 //  brickBlast    score, level, won, bricks, perfectLevel, combo
 //  asteroidDash  score, wave, saucers, chain, rocks, upgrades
 //  dreamBoutique outfits, perfect, bestTheme, runScore, stars, colorStars, wins
@@ -68,6 +68,8 @@ export const ACHIEVEMENTS = [
   A('ts_classic', 'turboSnake', 'Classic Fan', 'Score 300 in Classic mode.', '🎮', (f) => f.mode === 'classic' && f.score >= 300),
   A('ts_ghost', 'turboSnake', 'Ghost Rider', 'Collect a Ghost power-up.', '👻', (f) => (f.ghost || 0) >= 1),
   A('ts_gold', 'turboSnake', 'Golden Snack', 'Eat 3 gold bonus foods in one run.', '⭐', (f) => (f.bonus || 0) >= 3),
+  A('ts_battle', 'turboSnake', 'Last Snake Slithering', 'Win a Snake Battle.', '🏟️', (f) => !!f.battle && !!f.win),
+  A('ts_crowd', 'turboSnake', 'Crowded Arena', 'Finish a Snake Battle with 4 snakes.', '🐍', (f) => !!f.battle && f.players >= 4),
 
   // ---- Brick Blast
   A('bb_first', 'brickBlast', 'First Break', 'Clear level 1.', '🧱', (f) => f.level >= 2 || f.won),

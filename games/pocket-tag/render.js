@@ -381,7 +381,7 @@ export class Renderer {
       else if (w.mode === 'freeze') { text = me.frozen ? 'FROZEN: wait for a rescue' : me.role === 'tagger' ? 'FREEZE THE RUNNERS' : ''; color = me.frozen ? '#8fd8ff' : '#ff2d55'; }
       else if (w.mode === 'infection') { text = me.infected ? 'YOU’RE INFECTED: spread it!' : ''; color = '#7dff5d'; }
       else if (w.mode === 'crown') { text = me.crown ? 'YOU HAVE THE CROWN!' : 'STEAL THE CROWN'; color = me.crown ? '#ffe14d' : '#fff'; }
-      if (text) {
+      if (text && !(this.banner && this.banner.text === text)) {
         ctx.font = `900 ${small ? 14 : 18}px "Trebuchet MS", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.strokeText(text, W / 2, 20); ctx.fillStyle = color; ctx.fillText(text, W / 2, 20);
       }

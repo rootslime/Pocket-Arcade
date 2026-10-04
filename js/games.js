@@ -59,10 +59,11 @@ export const GAMES = [
     description: 'The classic you know, plus a Turbo mode with power-ups, bonus food and ghost mode.',
     genre: ['Classic', 'Arcade'], categories: ['classic', 'arcade'], path: 'games/turbo-snake/', icon: 'assets/icons/turbo-snake.svg',
     goal: "Eat food to grow without hitting walls or yourself.", tips: ["Turbo mode adds bonus food and power-ups.", "Quick turns are buffered so you never reverse into yourself."],
-    scoreType: 'score', scoreField: 'highScore', multiplayer: false,
+    scoreType: 'score', scoreField: 'highScore', multiplayer: { supported: true, minPlayers: 2, maxPlayers: 4, bots: true, local: true, online: true, page: 'battle.html', players: '2–4 players', modes: ['Snake Battle'] },
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Classic', field: 'classicHigh', fmt: 'num' }, { label: 'Turbo', field: 'turboHigh', fmt: 'num' }],
     controls: { keyboard: true, touch: true, gamepad: true },
-    controlsText: ['Arrows / WASD — Steer', 'Swipe or D-pad on touch'],
+    stats: { solo: [['Snake Battles played', 'battles'], ['Snake Battle wins', 'battleWins']], multi: [['Multiplayer battles', 'mpBattles'], ['Multiplayer wins', 'mpBattleWins']] },
+    controlsText: ['Arrows / WASD — Steer', 'Swipe or D-pad on touch', 'Snake Battle: 2–4 snakes, last one alive wins'],
     theme: { accent: '#5dff8f', background: 'radial-gradient(800px 500px at 60% 30%, #5dff8f26, transparent), linear-gradient(160deg, #052a1d, #0b1038)' },
   },
   {

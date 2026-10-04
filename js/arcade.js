@@ -188,7 +188,7 @@ function shelfCard(g) {
 function shelvesHTML() {
   const recent = save().profile.recent.map((r) => gameById(r.id)).filter(Boolean).slice(0, 6);
   return SHELVES.map((sh) => {
-    const list = sh.id === 'continue' ? recent : sh.ids ? sh.ids.map(gameById).filter(Boolean) : GAMES.filter(sh.filter);
+    const list = sh.id === 'continue' ? recent : sh.ids ? sh.ids.map(gameById).filter(Boolean) : GAMES.filter(sh.filter).filter((g) => !g.multiplayer || mpButtons(g));
     if (!list.length) return '';
     if (sh.id === 'featured') {
       const g = list[0];
@@ -249,7 +249,7 @@ function detailHTML(g) {
           ${rows.filter((r) => r.label !== (g.records[0] || {}).label).slice(0, 3).map((r) => `<div><span>${esc(r.label.toUpperCase())}</span><b>${esc(r.text)}</b></div>`).join('')}
           <div><span>ACHIEVEMENTS</span><b>${ac.done} / ${ac.total}</b></div></div>
         <div class="controls-box"><h4>Controls</h4><ul>${g.controlsText.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>${inputChips(g)}</div>
-        ${g.multiplayer ? `<div class="controls-box mp-box"><h4>Multiplayer · ${esc(g.multiplayer.players)}</h4><p class="muted">${g.multiplayer.modes.map(esc).join(' • ')}</p><div class="hero-btns">${mpButtons(g)}</div></div>` : ''}
+        ${g.multiplayer && mpButtons(g) ? `<div class="controls-box mp-box"><h4>Multiplayer · ${esc(g.multiplayer.players)}</h4><p class="muted">${g.multiplayer.modes.map(esc).join(' • ')}</p><div class="hero-btns">${mpButtons(g)}</div></div>` : ''}
         <div class="hero-btns"><button type="button" class="btn primary big" data-action="play" data-game="${g.id}" id="detail-play">▶ PLAY</button>
           <button type="button" class="btn big" data-action="howto" data-game="${g.id}">How to Play</button>
           <button type="button" class="btn big" data-action="game-ach" data-game="${g.id}">Achievements</button></div>
@@ -278,7 +278,7 @@ function onlineHTML(list) {
 function multiplayerHTML() {
   const mpGames = GAMES.filter((g) => g.multiplayer && g.multiplayer.supported);
   const feat = mpGames.find((g) => g.featured) || mpGames[0];
-  const others = mpGames.filter((g) => g !== feat);
+  const others = mpGames.filter((g) => g !== feat && mpButtons(g));
   const online = onlineAvailable();
   return `<div class="page mp"><header class="page-head"><h1>Multiplayer</h1><p class="muted">Play together, or against bots</p></header>
     <section class="mp-hero" style="--accent:${feat.theme.accent}"><img src="${feat.icon}" alt="" width="240" height="150">
@@ -292,7 +292,7 @@ function multiplayerHTML() {
 
 function launchMp(g, mode, code) {
   sfx.unlock(); sfx.play('click');
-  location.href = `${g.path}?mp=${mode}${code ? `&code=${code}` : ''}`;
+  location.href = `${g.path}${(g.multiplayer && g.multiplayer.page) || ''}?mp=${mode}${code ? `&code=${code}` : ''}`;
 }
 
 function openJoin(g, code = '') {
