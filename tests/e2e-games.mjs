@@ -1,4 +1,4 @@
-// End-to-end QA for the ten Pocket Arcade games (served under /pocket-arcade/ like GitHub Pages).
+// End-to-end QA for the ten single-player Pocket Arcade games (Pocket Tag has tests/e2e-multiplayer.mjs) (served under /pocket-arcade/ like GitHub Pages).
 import { launch, watch, devices } from './lib.mjs';
 import { serve } from './serve.mjs';
 

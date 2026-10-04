@@ -4,7 +4,7 @@
 
 * Console-style launcher: horizontal game library, game detail screens, dashboard, library filters, achievements, profile and settings
 * Keyboard, mouse, touch **and gamepad** navigation and controls
-* Arcade-wide XP / level, 81 achievements, cosmetic rewards (titles, avatars, borders, themes)
+* Arcade-wide XP / level, 88 achievements, cosmetic rewards (titles, avatars, borders, themes)
 * Multiplayer screen: Quick Play, Create / Join Room (5-letter codes), Local Play and Play with Bots, driven by each game's `multiplayer` config
 * Guest mode is complete: all eleven games, local saves, local achievements, bots and local multiplayer. Accounts only add sync; online play needs a realtime service (see *Multiplayer setup*)
 
@@ -41,7 +41,7 @@ js/
   session.js          cheap peek at the persisted session (picks the local save namespace)
   storage.js          localStorage saves (guest + per-account cache), merge logic, sanitising
   progression.js      XP, levels, rewards, anti-exploit rules, run recording
-  achievements.js     all 81 achievement definitions + evaluation
+  achievements.js     all 88 achievement definitions + evaluation
   multiplayer.js      public identity, display-name hygiene, realtime link (reconnects), interpolation
   rooms.js            room codes, presence-based membership, ready, host handover, public matchmaking
   lobby.js            reusable lobby UI (menu, setup, room) for any multiplayer game
@@ -201,6 +201,20 @@ Guests save to `localStorage` (`pocketArcade.v1`). When someone signs in on a de
 
 If the service isn’t configured the online buttons are not shown (the screen explains why). Bots and local play always work. Nothing pretends to be online.
 
+### Multiplayer in the other games
+
+Every mode below is real and tested; modes that need online play simply don’t appear until a realtime service is configured.
+
+| Game | Mode | Players | Where it works |
+|---|---|---|---|
+| **Turbo Snake** | **Snake Battle**: shared arena, last snake alive wins (food, knock-out trails, head-on = both out) | 2–4 | bots · same screen · online (host runs the simulation, 8 state updates/s) |
+| **Brick Blast** | **Brick Battle**: identical bricks and capsule drops from a shared seed, highest score wins | 2–4 | pass-and-play on one device · online (everyone plays at once, live opponent scores) |
+| **Neon Dodge** | **Last Standing**: everyone faces the same seeded hazard sequence; last player alive wins | 2–6 | online only |
+| **Drift Circuit** | **Multiplayer Race**: same track, positions streamed and interpolated, finish times decide, *Photo Finish* achievement | 2–6 | online only |
+| **Asteroid Dash** | **Co-op**: shared battlefield and waves, individual lives and scores, no friendly fire | 2–4 | same screen only (online co-op would need an authoritative server) |
+
+These use the shared `js/mp-kit.js` helpers (lobby, connection banner, host handover, standings, `PeerBoard` for score/progress heartbeats) on top of `js/rooms.js`.
+
 ### Multiplayer setup (Supabase Realtime)
 
 Pocket Arcade reuses the same Supabase project as accounts. **Realtime Broadcast and Presence need no tables and no SQL.**
@@ -242,7 +256,7 @@ The Multiplayer screen, library and detail pages then show exactly the buttons t
 
 * **XP** comes from finishing runs (time played, first time in a game, personal bests, victories, game milestones and achievements). Runs under 20 s earn nothing, so start-and-quit does not farm XP.
 * **Arcade level**: level *n* needs `100 + 50 × (n − 1)` XP. Levels unlock cosmetic titles (Rookie → Pocket Legend), avatars, profile borders and console themes. Cosmetics never change gameplay.
-* **81 achievements** (6 arcade-wide + 5-10 per game, including Pocket Tag’s *You’re It!*, *Can’t Catch Me*, *Tag Master*, *Last One Standing* and *Party Time*). Unlocks show an animated toast and are listed with dates under *Achievements* and on each game's detail screen.
+* **88 achievements** (6 arcade-wide + 5-10 per game, including Pocket Tag’s *You’re It!*, *Can’t Catch Me*, *Tag Master*, *Last One Standing* and *Party Time*). Unlocks show an animated toast and are listed with dates under *Achievements* and on each game's detail screen.
 
 ## Controls and controller support
 
@@ -266,6 +280,9 @@ node tests/boutique-score.mjs    # Dream Boutique scoring is deterministic and r
 node tests/tag-sim.mjs           # Pocket Tag: maps connected, all modes × maps with bots, rules, movement, bot limits
 node tests/e2e-games.mjs         # all games in a real browser (Playwright + Chromium)
 node tests/e2e-multiplayer.mjs   # Pocket Tag + multiplayer: bots, local, rooms, sync, host handover, reconnects, validation
+node tests/battle-sim.mjs        # Snake Battle rules + bots (headless)
+node tests/e2e-battle.mjs        # Snake Battle in the browser: bots, local, online, host handover
+node tests/e2e-mpgames.mjs       # Neon Dodge Last Standing, Brick Battle, Drift race, Asteroid co-op (ONLY=dodge|brick|drift|coop to run one)
 node tests/e2e-console.mjs       # console UI, navigation, gamepad, guest progression
 node tests/e2e-auth.mjs          # accounts, sync, migration, password reset (mock Supabase)
 ```

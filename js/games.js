@@ -163,6 +163,9 @@ export const SHELVES = [
 // ---- helpers shared by the console UI and the profile screen
 import { formatTime, formatScore } from './util.js';
 
+// every game that declares multiplayer is also listed under the Multiplayer filter
+for (const g of GAMES) if (g.multiplayer && g.multiplayer.supported && !g.categories.includes('multiplayer')) g.categories.push('multiplayer');
+
 export const gameById = (id) => GAMES.find((g) => g.id === id) || null;
 export const gameBySlug = (slug) => GAMES.find((g) => g.slug === slug) || null;
 export const accentOf = (g) => g.theme.accent;

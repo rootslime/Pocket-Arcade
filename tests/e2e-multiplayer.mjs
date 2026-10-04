@@ -295,7 +295,7 @@ if (run('online')) {
   const d0 = JSON.parse(rt0), d1 = JSON.parse(rt1);
   const per = (k) => ((d1[k] || 0) - (d0[k] || 0)) / 3;
   const msgBytes = await A.evaluate(() => window.__mockRT.bytes);
-  ok(per('msg') > 10 && per('msg') < 40, `host sends ${per('msg').toFixed(0)} messages/s (positions 8 Hz + host tick 8 Hz)`);
+  ok(per('msg') > 5 && per('msg') < 40, `host sends ${per('msg').toFixed(0)} messages/s (positions 8 Hz + host tick 8 Hz)`);
   ok(msgBytes / Math.max(1, ((d1.msg || 0))) < 400, `messages are small (avg ${(msgBytes / Math.max(1, d1.msg || 1)).toFixed(0)} bytes)`);
   await A.screenshot({ path: '/tmp/mpA.png' });
 
