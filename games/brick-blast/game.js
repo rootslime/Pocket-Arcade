@@ -18,7 +18,7 @@ const shake = new Shake();
 const G = {
   level: 1, score: 0, lives: 3, bricks: [], balls: [], drops: [], combo: 0, remaining: 0,
   pad: { cx: W / 2, w: 90, tw: 90, tx: null }, fxT: { wide: 0, slow: 0 }, hitCount: 0,
-  banner: null, bannerT: 0, transition: 0, over: false, t: 0, lost: 0, bricksBroken: 0, flash: 0,
+  perfect: false, levelLost: false, maxCombo: 0, pickups: 0, banner: null, bannerT: 0, transition: 0, over: false, t: 0, lost: 0, bricksBroken: 0, flash: 0,
 };
 
 const shell = createShell({
@@ -32,6 +32,7 @@ const shell = createShell({
     { id: 'lives', label: 'LIVES', init: '♥♥♥' },
   ],
   best: { field: 'highScore', kind: 'high', label: 'BEST' },
+  gamepad: { left: ['dpadLeft', 'lsLeft'], right: ['dpadRight', 'lsRight'], launch: ['a', 'x', 'rt'] },
   keys: {
     left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'], launch: ['Space', 'ArrowUp', 'KeyW'],
   },
@@ -45,6 +46,7 @@ const shell = createShell({
       ['P / Esc', 'Pause'],
     ],
     touch: 'Drag anywhere to slide the paddle, or use ◀ ▶. Tap LAUNCH (or the board) to serve.',
+    pad: 'D-pad / left stick move the paddle · A launches.',
     tips: [
       'Where the ball lands on the paddle sets its angle: hit with the edge to steer.',
       'Catch falling capsules: W wide paddle · M multi-ball · S slow ball · + extra life.',
@@ -84,6 +86,7 @@ const padWidth = () => Math.max(66, 94 - (G.level - 1) * 5);
 
 function reset() {
   G.level = 1; G.score = 0; G.lives = 3; G.combo = 0; G.over = false; G.t = 0; G.lost = 0; G.bricksBroken = 0; G.flash = 0;
+  G.perfect = false; G.levelLost = false; G.maxCombo = 0; G.pickups = 0;
   G.fxT.wide = G.fxT.slow = 0; G.transition = 0; G.banner = null; G.hitCount = 0;
   G.pad.cx = W / 2; G.pad.tx = null; G.pad.w = G.pad.tw = padWidth();
   G.drops.length = 0; G.balls.length = 0;
@@ -110,6 +113,7 @@ function buildLevel(n) {
       G.bricks.push(b);
     }
   });
+  G.levelLost = false;
   G.banner = `LEVEL ${n} · ${L.name.toUpperCase()}`; G.bannerT = 2;
 }
 
@@ -271,7 +275,8 @@ function damage(br) {
     fx.emit(cx, cy, 4, { speed: 100, life: 0.25, size: 3, color: '#dfe3ff' });
     return;
   }
-  G.remaining--; G.bricksBroken++; G.combo++;
+  G.remaining--; G.bricksBroken++; G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo);
+  if (G.maxCombo === 12) shell.facts({ combo: 12 });
   const base = br.type === 'strong' ? 25 : br.type === 'bonus' ? 30 : 10;
   const mult = Math.min(5, 1 + Math.floor((G.combo - 1) / 4));
   const pts = base * mult;
@@ -302,6 +307,7 @@ function spawnDrop(x, y) {
 
 function collect(p) {
   const t = p.t.id;
+  G.pickups++;
   shell.sfx.play('powerup');
   G.score += 25;
   fx.emit(p.x, PAD_Y, 16, { speed: 200, life: 0.5, size: 4, color: [p.t.color, '#fff'] });
@@ -324,7 +330,7 @@ function collect(p) {
 }
 
 function loseLife() {
-  G.lives--; G.lost++; G.combo = 0;
+  G.lives--; G.lost++; G.combo = 0; G.levelLost = true;
   shell.sfx.play('hit'); shake.kick(10); shell.hitStop(0.08); G.flash = 1;
   fx.emit(G.pad.cx, PAD_Y, 24, { speed: 260, life: 0.7, size: 5, color: ['#ff3c6e', '#fff'] });
   G.fxT.wide = 0; G.fxT.slow = 0; G.drops.length = 0;
@@ -334,6 +340,7 @@ function loseLife() {
 }
 
 function levelClear() {
+  if (!G.levelLost) { G.perfect = true; shell.facts({ perfectLevel: true, level: G.level + 1 }); } else shell.facts({ level: G.level + 1 });
   const bonus = 200 + G.lives * 100;
   G.score += bonus;
   shell.sfx.play('victory');
@@ -352,6 +359,10 @@ function end(win) {
     win, title: win ? 'You Win!' : 'Game Over', subtitle: win ? 'Every level cleared!' : `Out of lives on level ${G.level}`,
     score: G.score,
     extras: { highestLevel: G.level },
+    facts: { score: G.score, level: win ? LEVELS.length + 1 : G.level, won: win, bricks: G.bricksBroken, perfectLevel: G.perfect, combo: G.maxCombo },
+    counters: { bricks: G.bricksBroken, powerups: G.pickups },
+    milestones: [['Levels cleared', Math.min(60, (G.level - (win ? 0 : 1)) * 10)], ['Bricks broken', Math.min(30, Math.floor(G.bricksBroken / 10) * 2)]],
+    summary: `Score ${formatScore(G.score)} · Level ${G.level}`,
     stats: [
       ['Level reached', `${G.level}/${LEVELS.length}`],
       ['Bricks broken', String(G.bricksBroken)],

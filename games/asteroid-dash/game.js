@@ -22,7 +22,7 @@ const G = {
   rocks: [], bullets: [], ebullets: [], drops: [], saucers: [], comets: [], warns: [],
   score: 0, lives: 3, wave: 0, up: { rapid: 0, triple: 0, shield: 0, thrust: 0, mult: 0 },
   waveT: 0, banner: '', bannerT: 0, chain: 0, chainT: 0, t: 0, over: false, flash: 0,
-  shots: 0, hits: 0, rocksKilled: 0, saucersKilled: 0, stars: [], saucerQueue: [], cometQueue: [],
+  maxChain: 0, pickups: 0, shots: 0, hits: 0, rocksKilled: 0, saucersKilled: 0, stars: [], saucerQueue: [], cometQueue: [],
 };
 
 const shell = createShell({
@@ -36,6 +36,7 @@ const shell = createShell({
     { id: 'lives', label: 'SHIPS', init: '▲▲▲' },
   ],
   best: { field: 'highScore', kind: 'high', label: 'BEST' },
+  gamepad: { left: ['dpadLeft', 'lsLeft'], right: ['dpadRight', 'lsRight'], thrust: ['a', 'dpadUp', 'lsUp', 'lb'], fire: ['x', 'rt', 'rb', 'b'] },
   keys: {
     left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'], thrust: ['ArrowUp', 'KeyW'],
     fire: ['Space', 'KeyJ', 'KeyZ'],
@@ -53,6 +54,7 @@ const shell = createShell({
       ['P / Esc', 'Pause'],
     ],
     touch: '◀ ▶ rotate · hold THRUST to fly · hold FIRE to shoot (use both thumbs).',
+    pad: 'D-pad / left stick rotate · A thrust · X or RT fire.',
     tips: [
       'Big rocks split into smaller, faster ones. Edges wrap around the screen.',
       'From wave 3 saucers fire back; from wave 4 comets streak across (a line warns you).',
@@ -82,7 +84,7 @@ const wrapD = (d, size) => { d = ((d + size / 2) % size + size) % size - size / 
 const dist = (a, b) => Math.hypot(wrapD(a.x - b.x, W), wrapD(a.y - b.y, H));
 
 function reset() {
-  Object.assign(G, { score: 0, lives: 3, wave: 0, waveT: 0, banner: '', bannerT: 0, chain: 0, chainT: 0, t: 0, over: false, flash: 0, shots: 0, hits: 0, rocksKilled: 0, saucersKilled: 0 });
+  Object.assign(G, { score: 0, lives: 3, wave: 0, waveT: 0, banner: '', bannerT: 0, chain: 0, chainT: 0, t: 0, over: false, flash: 0, shots: 0, hits: 0, rocksKilled: 0, saucersKilled: 0, maxChain: 0, pickups: 0 });
   G.rocks.length = G.bullets.length = G.ebullets.length = G.drops.length = G.saucers.length = G.comets.length = G.warns.length = 0;
   G.saucerQueue.length = G.cometQueue.length = 0;
   for (const k of Object.keys(G.up)) G.up[k] = 0;
@@ -115,6 +117,7 @@ function makeRock(size, x, y, speedMul = 1) {
 
 function nextWave() {
   G.wave++;
+  if (G.wave >= 2) shell.facts({ wave: G.wave });
   const n = Math.min(11, 3 + G.wave);
   const sm = Math.min(2, 1 + (G.wave - 1) * 0.07);
   for (let i = 0; i < n; i++) {
@@ -311,6 +314,7 @@ function fire() {
 function award(base, x, y) {
   G.chain = G.chainT > 0 ? G.chain + 1 : 1;
   G.chainT = 1.3;
+  if (G.chain > G.maxChain) { G.maxChain = G.chain; if (G.chain === 8) shell.facts({ chain: 8 }); }
   const mult = G.up.mult > 0 ? 2 : 1;
   const chainBonus = G.chain >= 3 ? (G.chain - 2) * 10 : 0;
   const pts = (base + chainBonus) * mult;
@@ -377,6 +381,7 @@ function spawnDrop(x, y) {
 
 function collect(p) {
   const u = UPGRADES[p.type];
+  G.pickups++;
   G.up[p.type] = u.dur;
   shell.sfx.play('powerup');
   pops.add(p.x, p.y - 20, u.label, u.color, 15);
@@ -410,6 +415,10 @@ function end() {
   shell.finish({
     win: false, score: G.score, subtitle: `You reached wave ${G.wave}`,
     extras: { highestWave: G.wave },
+    facts: { score: G.score, wave: G.wave, saucers: G.saucersKilled, chain: G.maxChain, rocks: G.rocksKilled, upgrades: G.pickups },
+    counters: { saucers: G.saucersKilled, rocks: G.rocksKilled, upgrades: G.pickups },
+    milestones: [['Waves survived', Math.min(60, (G.wave - 1) * 8)], ['Saucers destroyed', Math.min(20, G.saucersKilled * 5)]],
+    summary: `Score ${formatScore(G.score)} · Wave ${G.wave}`,
     stats: [
       ['Wave', String(G.wave)],
       ['Rocks destroyed', String(G.rocksKilled)],

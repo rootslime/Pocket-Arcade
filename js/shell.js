@@ -5,6 +5,11 @@ import * as store from './storage.js';
 import { sfx } from './audio.js';
 import { Input, bindTouchButton } from './input.js';
 import { formatTime, formatScore } from './util.js';
+import { recordRun, checkLive, levelInfo } from './progression.js';
+import { achievementToast, levelUpToast } from './toast.js';
+import * as gp from './gamepad.js';
+import { moveFocus } from './nav.js';
+import { isConfigured } from './session.js';
 
 const ICON = {
   pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>',
@@ -44,7 +49,7 @@ export function createShell(cfg) {
         ${bestCfg ? `<div class="hud-item hud-best"><span class="hud-label">${esc(bestCfg.label || 'BEST')}</span><span class="hud-val" id="hud-best">--</span></div>` : ''}
       </div>
     </header>
-    <main class="g-stage" id="g-stage"><canvas id="g-canvas" tabindex="-1" aria-label="${esc(cfg.title)} game area"></canvas></main>
+    <main class="g-stage${cfg.dom ? ' is-dom' : ''}" id="g-stage">${cfg.dom ? '<div class="g-dom" id="g-dom"></div>' : `<canvas id="g-canvas" tabindex="-1" aria-label="${esc(cfg.title)} game area"></canvas>`}</main>
     <div class="g-touch" id="g-touch" hidden></div>
     <div class="g-overlay" id="g-overlay" hidden><div class="g-panel" id="g-panel" role="dialog" aria-modal="true"></div></div>
   </div>`;
@@ -53,12 +58,12 @@ export function createShell(cfg) {
   const app = root.querySelector('.game-app');
   const stage = $('g-stage'), canvas = $('g-canvas'), overlay = $('g-overlay'), panel = $('g-panel');
   const touchBar = $('g-touch');
-  const ctx = canvas.getContext('2d', { alpha: false });
+  const ctx = canvas ? canvas.getContext('2d', { alpha: false }) : null;
   const input = new Input(cfg.keys || {});
   input.active = false;
 
   const shell = {
-    id: cfg.id, canvas, ctx, input, sfx, store,
+    id: cfg.id, canvas, ctx, input, sfx, store, root: $('g-dom'), stage, gamepad: gp,
     W: 0, H: 0, state: 'ready', mode: null, timeScale: 1,
     reduced: store.prefersReducedMotion(),
     lowFx: false, isTouch: false,
@@ -148,6 +153,7 @@ export function createShell(cfg) {
   // ---------- canvas sizing ----------
   let dpr = 1;
   function resize() {
+    if (!canvas) return;
     const r = stage.getBoundingClientRect();
     const sw = Math.max(50, r.width), sh = Math.max(50, r.height);
     const s = typeof cfg.size === 'function' ? cfg.size(sw / sh) : cfg.size;
@@ -178,14 +184,14 @@ export function createShell(cfg) {
     const rows = (ins.controls || []).map((c) => `<li><kbd>${esc(c[0])}</kbd><span>${esc(c[1])}</span></li>`).join('');
     const tips = (ins.tips || []).map((t) => `<li>${esc(t)}</li>`).join('');
     const modeHTML = modes && !backable ? `
-      <div class="mode-pick" role="radiogroup" aria-label="Game mode">${modes.map((m) =>
+      <div class="mode-pick" role="radiogroup" aria-label="${esc(cfg.modeLabel || 'Game mode')}">${modes.map((m) =>
         `<button type="button" role="radio" class="mode-btn" data-mode="${m.id}" aria-checked="${m.id === shell.mode}"><strong>${esc(m.label)}</strong><small>${esc(m.desc)}</small></button>`).join('')}</div>` : '';
     return `
       <h2 id="g-panel-title">${esc(cfg.title)}</h2>
       <p class="p-goal"><b>GOAL</b> ${esc(ins.goal || '')}</p>
       ${modeHTML}
       <div class="p-cols">
-        <div><h3>Controls</h3><ul class="p-keys">${rows}</ul>${ins.touch ? `<p class="p-touch"><b>Touch:</b> ${esc(ins.touch)}</p>` : ''}</div>
+        <div><h3>Controls</h3><ul class="p-keys">${rows}</ul>${ins.touch ? `<p class="p-touch"><b>Touch:</b> ${esc(ins.touch)}</p>` : ''}${ins.pad ? `<p class="p-pad"><b>Controller:</b> ${esc(ins.pad)}</p>` : ''}</div>
         ${tips ? `<div><h3>Good to know</h3><ul class="p-tips">${tips}</ul></div>` : ''}
       </div>
       <div class="p-btns">
@@ -207,6 +213,23 @@ export function createShell(cfg) {
       </div>`;
   }
 
+  function progressHTML(pr) {
+    if (!pr) return '';
+    const info = levelInfo(store.getProfile().xp);
+    const lines = pr.breakdown.map((b) => `<li><span>${esc(b[0])}</span><strong>${b[1] >= 0 ? '+' : ''}${b[1]}</strong></li>`).join('');
+    const ach = pr.achievements.map((a) => `<li><span class="ic" aria-hidden="true">${esc(a.icon)}</span><span><strong>${esc(a.name)}</strong><small>${esc(a.desc)}</small></span></li>`).join('');
+    const rew = pr.rewards.length ? `<p class="p-reward">🎁 New reward${pr.rewards.length > 1 ? 's' : ''}: ${pr.rewards.map((r) => esc(r.name)).join(', ')}</p>` : '';
+    return `
+      <div class="p-xp">
+        <div class="p-xp-head"><b>${pr.valid ? `+${pr.xp} XP` : 'No XP this run'}</b><span>ARCADE LEVEL ${info.level}${pr.leveledUp ? ' ⬆' : ''}</span></div>
+        <div class="xpbar" role="progressbar" aria-valuemin="0" aria-valuemax="${info.need}" aria-valuenow="${info.into}"><i style="width:${Math.round(info.pct * 100)}%"></i></div>
+        <div class="p-xp-sub">${info.into} / ${info.need} XP</div>
+        ${pr.valid ? (lines ? `<ul class="p-xp-list">${lines}</ul>` : '') : `<p class="p-xp-note">Play at least ${MIN_RUN_SECS_LABEL} seconds to earn XP.</p>`}
+        ${rew}
+        ${ach ? `<h3>Achievements unlocked</h3><ul class="p-ach">${ach}</ul>` : ''}
+      </div>`;
+  }
+
   function overHTML(r) {
     const stats = (r.stats || []).map((s) => `<li><span>${esc(s[0])}</span><strong>${esc(s[1])}</strong></li>`).join('');
     const bestLine = r.result && r.result.isNew
@@ -218,8 +241,9 @@ export function createShell(cfg) {
       <div class="p-score" aria-label="Final result">${esc(r.scoreText)}</div>
       ${bestLine}
       ${stats ? `<ul class="p-stats">${stats}</ul>` : ''}
+      ${progressHTML(r.progress)}
       <div class="p-btns">
-        <button type="button" class="g-btn primary big" data-act="restart">Play Again</button>
+        <button type="button" class="g-btn primary big" data-act="restart">${esc(r.againLabel || 'Play Again')}</button>
         <a class="g-btn" href="../../index.html">Return to Arcade</a>
       </div>`;
   }
@@ -241,6 +265,23 @@ export function createShell(cfg) {
     if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
   }
 
+  // ---- game-defined modal (upgrade picks, shift summaries ...). Game updates are paused while open.
+  let modalHandler = null, modalReturnState = null;
+  shell.modal = (html, onAction) => {
+    if (shell.state === 'over') return;
+    modalReturnState = shell.state === 'modal' ? modalReturnState : shell.state;
+    modalHandler = onAction;
+    setState('modal');
+    showPanel('modal', html);
+  };
+  shell.closeModal = () => {
+    if (shell.state !== 'modal') return;
+    modalHandler = null;
+    hidePanel();
+    setState(modalReturnState || 'playing');
+    resetClock();
+  };
+
   panel.addEventListener('click', (e) => {
     const modeBtn = e.target.closest('.mode-btn');
     if (modeBtn) {
@@ -249,8 +290,11 @@ export function createShell(cfg) {
       panel.querySelectorAll('.mode-btn').forEach((b) => b.setAttribute('aria-checked', String(b === modeBtn)));
       sfx.unlock(); sfx.play('click');
       shell.refreshBest();
+      if (cfg.onModeChange) cfg.onModeChange(shell.mode);
       return;
     }
+    const mb = e.target.closest('[data-modal]');
+    if (mb && panelName === 'modal' && modalHandler) { sfx.unlock(); sfx.play('click'); modalHandler(mb.dataset.modal, mb); return; }
     const b = e.target.closest('[data-act]');
     if (!b) return;
     sfx.unlock();
@@ -280,6 +324,8 @@ export function createShell(cfg) {
 
   // ---------- state machine ----------
   let lastResult = null;
+  let runSecs = 0, sessionCounted = false;
+  const MIN_RUN_SECS_LABEL = 20;
   function setState(s) {
     shell.state = s;
     app.dataset.state = s;
@@ -294,13 +340,18 @@ export function createShell(cfg) {
     lastResult = null;
     shell.timeScale = 1;
     shell.hitStopT = 0;
+    runSecs = 0;
     input.clear();
     for (const k of Object.keys(hudCache)) delete hudCache[k];
+    if (!sessionCounted) {
+      sessionCounted = true;
+      try { store.updateProfile((p) => { p.stats.sessions++; }); } catch (e) { /* ignore */ }
+    }
     cfg.reset(shell.mode);
     shell.refreshBest();
     setState('playing');
     resetClock();
-    canvas.focus({ preventScroll: true });
+    if (canvas) canvas.focus({ preventScroll: true });
   }
   shell.restart = startRun;
 
@@ -319,10 +370,16 @@ export function createShell(cfg) {
   }
   shell.pause = pause;
   shell.resume = resume;
+  shell.runSeconds = () => runSecs;
+
+  /** Live achievement check (e.g. mid-run milestones). Returns nothing; shows toasts. */
+  shell.facts = (facts) => {
+    try { for (const a of checkLive(cfg.id, facts)) achievementToast(a); } catch (e) { /* never break gameplay */ }
+  };
 
   /**
-   * End the run. r: { win, title, subtitle, score (number to submit), scoreKind, field,
-   *   scoreText, stats:[[label,val]], extras:{field:value} }
+   * End the run. r: { win, title, subtitle, score (number to submit), scoreText, stats:[[label,val]],
+   *   extras:{field:value}, facts:{...}, counters:{...}, milestones:[[label,xp]], summary, record:false }
    */
   shell.finish = (r) => {
     if (shell.state === 'over') return;
@@ -331,9 +388,24 @@ export function createShell(cfg) {
       r.result = store.submit(cfg.id, bestField(), r.score, bestCfg.kind || 'high');
     }
     if (r.extras) for (const k of Object.keys(r.extras)) store.submit(cfg.id, k, r.extras[k], 'high');
+    if (r.extrasLow) for (const k of Object.keys(r.extrasLow)) store.submit(cfg.id, k, r.extrasLow[k], 'low');
     if (r.result && !r.result.isNew && r.result.best) r.bestText = `Best: ${fmtBest(r.result.best)}`;
     r.scoreText = r.scoreText ?? (bestCfg ? fmtBest(r.score) : String(r.score));
     if (r.result && r.result.isNew && r.result.prev && bestCfg) r.bestText = `Previous best: ${fmtBest(r.result.prev)}`;
+    // ---- progression (XP, stats, achievements)
+    if (r.record !== false) {
+      try {
+        const milestones = [...(r.milestones || [])];
+        r.progress = recordRun(cfg.id, {
+          secs: runSecs, score: r.score, scoreKind: bestCfg && bestCfg.kind, isNewBest: !!(r.result && r.result.isNew),
+          win: !!r.win, summary: r.summary || (r.score !== undefined && bestCfg ? `${bestCfg.kind === 'low' ? 'Time' : 'Score'} ${fmtBest(r.score)}` : ''),
+          facts: r.facts || {}, counters: r.counters || {}, milestones, countsScore: r.countsScore,
+        });
+        r.progress.achievements.forEach((a, i) => setTimeout(() => achievementToast(a), 900 + i * 700));
+        if (r.progress.leveledUp) setTimeout(() => levelUpToast(r.progress.level, r.progress.rewards), 700);
+        if (isConfigured()) import('./cloud-save.js').then((m) => m.scheduleSync(800)).catch(() => {});
+      } catch (e) { r.progress = null; }
+    }
     lastResult = r;
     setState('over');
     shell.refreshBest();
@@ -349,11 +421,13 @@ export function createShell(cfg) {
   $('g-help').addEventListener('click', () => {
     sfx.unlock();
     if (shell.state === 'playing') pause();
-    if (shell.state === 'ready') return;
+    if (shell.state === 'ready' || shell.state === 'modal') return;
     showPanel('help', instructionsHTML('Back', true));
   });
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable);
+    if (typing) return;
     if (e.code === 'Escape' || e.code === 'KeyP') {
       if (shell.state === 'playing') { e.preventDefault(); pause(); }
       else if (shell.state === 'paused') {
@@ -366,17 +440,33 @@ export function createShell(cfg) {
       if (shell.state === 'paused' || shell.state === 'over' || (shell.state === 'playing' && cfg.quickRestart)) {
         e.preventDefault(); sfx.unlock(); startRun();
       }
+    } else if (overlay.hidden === false && /^Arrow(Up|Down|Left|Right)$/.test(e.code) && shell.state !== 'playing') {
+      e.preventDefault();
+      moveFocus(panel, e.code.slice(5).toLowerCase());
     }
   });
   document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
-  window.addEventListener('blur', () => { if (shell.state === 'playing' && !shell.isTouch) pause(); });
+  window.addEventListener('blur', () => { if (shell.state === 'playing' && !shell.isTouch && !cfg.noBlurPause) pause(); });
   window.addEventListener('pagehide', () => pause());
   store.subscribe(syncMute);
   // block page scroll / pull-to-refresh / pinch inside the game surface
-  for (const el of [stage, touchBar]) {
+  for (const el of cfg.dom ? [touchBar] : [stage, touchBar]) {
     el.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
   }
-  document.addEventListener('contextmenu', (e) => { if (e.target.closest('.g-stage, .g-touch')) e.preventDefault(); });
+  document.addEventListener('contextmenu', (e) => { if (e.target.closest('.g-stage, .g-touch') && !cfg.dom) e.preventDefault(); });
+
+  // ---- controller: menu navigation inside overlays + Start to pause
+  gp.initGamepad();
+  gp.startMenuNav((d) => {
+    if (d === 'start') { if (shell.state === 'playing') pause(); else if (shell.state === 'paused' && panelName === 'pause') resume(); return; }
+    if (overlay.hidden) return;
+    if (d === 'select') { const el = document.activeElement; if (el && panel.contains(el)) el.click(); return; }
+    if (d === 'back') {
+      if (shell.state === 'paused') { if (panelName === 'help') showPanel('pause', pauseHTML()); else resume(); }
+      return;
+    }
+    moveFocus(panel, d);
+  });
 
   // ---------- main loop ----------
   let last = 0, slowAcc = 0, slowN = 0;
@@ -390,6 +480,7 @@ export function createShell(cfg) {
     let dt = Math.min((t - last) / 1000, 0.1);
     last = t;
     if (shell.state === 'playing') {
+      runSecs += dt;
       // adaptive quality: measure raw frame time while playing
       slowAcc += dt; slowN++;
       if (slowN >= 120) {
@@ -397,6 +488,7 @@ export function createShell(cfg) {
         if (!shell.lowFx && avg > 1 / 38) { shell.lowFx = true; if (cfg.onLowFx) cfg.onLowFx(); }
         slowAcc = 0; slowN = 0;
       }
+      if (cfg.gamepad) gp.applyToInput(input, cfg.gamepad);
       let sdt = dt;
       if (shell.hitStopT > 0) { shell.hitStopT -= dt; sdt = 0; }
       sdt = Math.min(sdt, 0.05) * shell.timeScale;
@@ -407,11 +499,13 @@ export function createShell(cfg) {
           input.endStep();
         }
       }
-    } else if (shell.state === 'over' && cfg.ambient) {
+    } else if ((shell.state === 'over' || shell.state === 'modal') && cfg.ambient) {
       cfg.ambient(Math.min(dt, 0.05));
     }
-    ctx.setTransform(canvas.width / shell.W, 0, 0, canvas.height / shell.H, 0, 0);
-    cfg.render(ctx, shell.W, shell.H);
+    if (ctx) {
+      ctx.setTransform(canvas.width / shell.W, 0, 0, canvas.height / shell.H, 0, 0);
+      cfg.render(ctx, shell.W, shell.H);
+    } else if (cfg.render) cfg.render(null, 0, 0);
   }
 
   // ---------- boot ----------
@@ -421,6 +515,7 @@ export function createShell(cfg) {
     syncMute();
     syncTouchBar();
     shell.refreshBest();
+    if (isConfigured()) import('./cloud-save.js').then((m) => m.initCloud()).catch(() => {});
     if (cfg.init) cfg.init(shell);
     cfg.reset(shell.mode); // so the start screen has a live backdrop
     setState('ready');

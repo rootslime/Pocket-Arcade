@@ -1,0 +1,62 @@
+/* Dream Boutique layout (uses the shared game.css tokens) */
+.db { display: grid; gap: 12px; }
+.db-brief { padding: 12px 14px; border-radius: 16px; background: linear-gradient(135deg, #3a1450, #241038); border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); }
+.db-brief-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.db-icon { font-size: 2rem; }
+.db-brief small { font-size: .65rem; letter-spacing: .14em; color: var(--muted); font-weight: 800; }
+.db-brief h2 { margin: 0; font-size: clamp(1.1rem, 4vw, 1.5rem); text-transform: uppercase; font-style: italic; letter-spacing: .04em; color: var(--accent); }
+.db-style { margin-left: auto; padding: 4px 12px; border-radius: 99px; background: var(--accent); color: #2b0f3e; font-size: .85rem; }
+.db-reqs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; font-size: .88rem; }
+.db-reqs b { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.db-reqs ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 3px; }
+.db-reqs li { padding-left: 22px; position: relative; color: #e8dcff; }
+.db-reqs li::before { content: "○"; position: absolute; left: 2px; color: var(--muted); }
+.db-reqs li.ok { color: #9dffbf; } .db-reqs li.ok::before { content: "✔"; color: #5dff8f; }
+.db-main { display: grid; grid-template-columns: minmax(200px, 340px) 1fr; gap: 12px; align-items: start; }
+.db-stage { position: sticky; top: 0; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: #1a0f2e; }
+.db-model svg { border-radius: 12px; }
+.db-model svg { display: block; width: 100%; height: auto; max-height: 62vh; }
+.db-stage-note { padding: 8px 10px; font-size: .8rem; text-align: center; color: #d6c6f5; background: rgba(0, 0, 0, .35); min-height: 2.4em; }
+.db-panel { border-radius: 16px; padding: 10px; background: rgba(20, 10, 40, .8); border: 1px solid var(--line); display: grid; gap: 10px; }
+.db-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.db-tab { display: inline-flex; gap: 6px; align-items: center; min-height: 40px; padding: 0 12px; border-radius: 99px; cursor: pointer; font: 700 .85rem var(--font); color: var(--ink); background: rgba(255, 255, 255, .07); border: 1px solid var(--line); }
+.db-tab.on { background: var(--accent); color: #2b0f3e; border-color: var(--accent); }
+.db-tab.has:not(.on)::after { content: "✓"; color: #5dff8f; font-weight: 900; }
+.db-tab:disabled { opacity: .35; cursor: default; }
+.db-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; max-height: 38vh; overflow: auto; padding: 2px; }
+.db-item { text-align: left; padding: 8px 10px; border-radius: 12px; cursor: pointer; color: var(--ink); background: rgba(255, 255, 255, .06); border: 2px solid transparent; font-family: var(--font); display: grid; gap: 2px; }
+.db-item:hover:not(:disabled) { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.db-item.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, #200f38); }
+.db-item.locked { opacity: .45; cursor: not-allowed; }
+.db-item-name { font-weight: 800; font-size: .9rem; } .db-item em { font-size: .6rem; font-style: normal; padding: 1px 6px; border-radius: 6px; background: var(--accent); color: #2b0f3e; margin-left: 4px; }
+.db-item small { color: #b9a9dd; font-size: .72rem; }
+.db-colors-wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.db-label { font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+.db-colors { display: flex; flex-wrap: wrap; gap: 8px; }
+.db-swatch, .db-skin { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; border: 3px solid rgba(255, 255, 255, .25); }
+.db-swatch.on, .db-skin.on { border-color: #fff; box-shadow: 0 0 0 3px var(--accent); }
+.db-hint { color: var(--muted); font-size: .85rem; }
+.db-model-opts h3 { margin: 6px 0; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); grid-column: 1 / -1; }
+.db-model-opts { grid-column: 1 / -1; } .db-skins, .db-bgs { display: flex; flex-wrap: wrap; gap: 8px; }
+.db-bg { padding: 8px 12px; border-radius: 12px; cursor: pointer; color: var(--ink); background: rgba(255, 255, 255, .06); border: 2px solid transparent; font: 700 .85rem var(--font); display: grid; text-align: left; }
+.db-bg.on { border-color: var(--accent); } .db-bg:disabled { opacity: .45; cursor: not-allowed; } .db-bg small { color: #b9a9dd; font-weight: 500; }
+.db-actions { display: flex; justify-content: flex-end; }
+/* results modal */
+.db-result { display: grid; grid-template-columns: minmax(110px, 170px) 1fr; gap: 14px; text-align: left; margin-bottom: 14px; }
+.db-result-model svg { width: 100%; height: auto; border-radius: 12px; display: block; }
+.db-big { display: flex; align-items: baseline; gap: 6px; } .db-big span { font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+.db-big b { font: 900 2.4rem var(--mono); color: var(--accent); } .db-big i { font-style: normal; color: var(--accent); font-weight: 800; }
+.db-stars { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 3px; }
+.db-stars li { display: flex; justify-content: space-between; gap: 8px; opacity: 0; animation: dbPop .4s ease-out forwards; animation-delay: var(--d); }
+.db-stars .st { color: #ffe14d; letter-spacing: .1em; text-shadow: 0 0 10px #ffe14d88; }
+.db-checks { list-style: none; margin: 0 0 6px; padding: 0; font-size: .85rem; display: grid; gap: 2px; } .db-checks .ok { color: #9dffbf; } .db-checks .no { color: #ff9aa8; }
+.db-result .p-score { font-size: 2.1rem; margin: 2px 0; }
+.db-win { margin: 4px 0; color: #5dff8f; font-weight: 800; } .db-lose { margin: 4px 0; color: #ffb3c1; font-size: .9rem; } .db-unlock { margin: 4px 0 0; color: #ffe14d; font-weight: 700; font-size: .9rem; }
+@keyframes dbPop { from { transform: translateY(8px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 760px) {
+  .db-main { grid-template-columns: 1fr; }
+  .db-stage { position: static; display: grid; grid-template-columns: 1fr; } .db-model svg { max-height: 42vh; margin: 0 auto; }
+  .db-items { max-height: none; } .db-reqs { grid-template-columns: 1fr; }
+  .db-result { grid-template-columns: 1fr; } .db-result-model { max-width: 160px; margin: 0 auto; }
+}
+@media (prefers-reduced-motion: reduce) { .db-stars li { animation: none; opacity: 1; } }
