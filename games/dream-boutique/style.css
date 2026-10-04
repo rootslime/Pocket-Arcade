@@ -42,21 +42,9 @@
 .db-bg.on { border-color: var(--accent); } .db-bg:disabled { opacity: .45; cursor: not-allowed; } .db-bg small { color: #b9a9dd; font-weight: 500; }
 .db-actions { display: flex; justify-content: flex-end; }
 /* results modal */
-.db-result { display: grid; grid-template-columns: minmax(110px, 170px) 1fr; gap: 14px; text-align: left; margin-bottom: 14px; }
-.db-result-model svg { width: 100%; height: auto; border-radius: 12px; display: block; }
-.db-big { display: flex; align-items: baseline; gap: 6px; } .db-big span { font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
-.db-big b { font: 900 2.4rem var(--mono); color: var(--accent); } .db-big i { font-style: normal; color: var(--accent); font-weight: 800; }
-.db-stars { list-style: none; margin: 4px 0 8px; padding: 0; display: grid; gap: 3px; }
-.db-stars li { display: flex; justify-content: space-between; gap: 8px; opacity: 0; animation: dbPop .4s ease-out forwards; animation-delay: var(--d); }
-.db-stars .st { color: #ffe14d; letter-spacing: .1em; text-shadow: 0 0 10px #ffe14d88; }
-.db-checks { list-style: none; margin: 0 0 6px; padding: 0; font-size: .85rem; display: grid; gap: 2px; } .db-checks .ok { color: #9dffbf; } .db-checks .no { color: #ff9aa8; }
-.db-result .p-score { font-size: 2.1rem; margin: 2px 0; }
-.db-win { margin: 4px 0; color: #5dff8f; font-weight: 800; } .db-lose { margin: 4px 0; color: #ffb3c1; font-size: .9rem; } .db-unlock { margin: 4px 0 0; color: #ffe14d; font-weight: 700; font-size: .9rem; }
-@keyframes dbPop { from { transform: translateY(8px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (max-width: 760px) {
   .db-main { grid-template-columns: 1fr; }
   .db-stage { position: static; display: grid; grid-template-columns: 1fr; } .db-model svg { max-height: 42vh; margin: 0 auto; }
   .db-items { max-height: none; } .db-reqs { grid-template-columns: 1fr; }
-  .db-result { grid-template-columns: 1fr; } .db-result-model { max-width: 160px; margin: 0 auto; }
 }
-@media (prefers-reduced-motion: reduce) { .db-stars li { animation: none; opacity: 1; } }
+

@@ -46,7 +46,7 @@ export function buildTrack(def) {
   for (let i = 1; i <= M; i++) { const p = dense[i % M], q = dense[i - 1]; total += Math.hypot(p.x - q.x, p.y - q.y); cum.push(total); }
   const N = Math.round(total / SPACING);
   const step = total / N;
-  const pts = [];
+  let pts = [];
   let j = 0;
   for (let i = 0; i < N; i++) {
     const s = i * step;
@@ -55,6 +55,18 @@ export function buildTrack(def) {
     const p = dense[j % M], q = dense[(j + 1) % M];
     pts.push({ x: p.x + (q.x - p.x) * k, y: p.y + (q.y - p.y) * k });
   }
+  // start the lap on the straightest stretch (away from the shortcut) so a new player is not thrown into a corner
+  const ang = (i) => { const a = pts[(i - 3 + N) % N], b = pts[i], c = pts[(i + 3) % N]; const v1x = b.x - a.x, v1y = b.y - a.y, v2x = c.x - b.x, v2y = c.y - b.y; return Math.abs(Math.atan2(v1x * v2y - v1y * v2x, v1x * v2x + v1y * v2y)); };
+  let bestK = 0, bestC = Infinity;
+  for (let i = 0; i < N; i++) {
+    const fr = i / N;
+    if (fr > def.cut.from - 0.05 && fr < def.cut.to + 0.05) continue;
+    let c = 0; for (let w = -22; w <= 22; w += 2) c += ang((i + w + N) % N);
+    if (c < bestC) { bestC = c; bestK = i; }
+  }
+  pts = pts.slice(bestK).concat(pts.slice(0, bestK));
+  const r0 = bestK / N;
+  const rot = (f) => (((f - r0) % 1) + 1) % 1;
   // tangents
   const tan = pts.map((p, i) => { const q = pts[(i + 1) % N], o = pts[(i - 1 + N) % N]; const dx = q.x - o.x, dy = q.y - o.y, l = Math.hypot(dx, dy) || 1; return { x: dx / l, y: dy / l }; });
   const half = def.width / 2;
@@ -65,7 +77,7 @@ export function buildTrack(def) {
   const cps = [];
   for (let k = 1; k <= 5; k++) cps.push(Math.round((k / 6) * N));
   // shortcut: a gently curved dirt chord between two points of the loop
-  const ci = at(def.cut.from), cj = at(def.cut.to);
+  const ci = at(rot(def.cut.from)), cj = at(rot(def.cut.to));
   const A = pts[ci], B = pts[cj];
   const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
   const cut = [];
@@ -75,8 +87,8 @@ export function buildTrack(def) {
   void mx; void my;
   const cutWidth = def.width * 0.7;
 
-  const cones = def.cones.map(([f, off], n) => { const i = at(f); const p = lateral(i, off); return { id: n, x: p.x, y: p.y, r: 13, hit: false, vx: 0, vy: 0, rot: 0 }; });
-  const pads = def.pads.map((f) => { const i = at(f); return { i, x: pts[i].x, y: pts[i].y, dir: tan[i], w: def.width * 0.55 }; });
+  const cones = def.cones.map(([f, off], n) => { const i = at(rot(f)); const p = lateral(i, off); return { id: n, x: p.x, y: p.y, r: 13, hit: false, vx: 0, vy: 0, rot: 0 }; });
+  const pads = def.pads.map((f) => { const i = at(rot(f)); return { i, x: pts[i].x, y: pts[i].y, dir: tan[i], w: def.width * 0.55 }; });
 
   const track = { def, pts, tan, N, step, total, half, cps, cut, cutWidth, cones, pads, lap: def.laps, start: { i: N - 6 } };
   const sp = pts[track.start.i], st = tan[track.start.i];

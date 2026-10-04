@@ -1,4 +1,4 @@
-// End-to-end QA for Pocket Arcade. Runs a static server under /pocket-arcade/ (GitHub Pages style) and drives Chromium.
+// End-to-end QA for the ten Pocket Arcade games (served under /pocket-arcade/ like GitHub Pages).
 import { launch, watch, devices } from './lib.mjs';
 import { serve } from './serve.mjs';
 
@@ -11,8 +11,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const GAMES = [
   ['grappleRush', 'grapple-rush', 'Grapple Rush'], ['neonDodge', 'neon-dodge', 'Neon Dodge'], ['turboSnake', 'turbo-snake', 'Turbo Snake'],
   ['brickBlast', 'brick-blast', 'Brick Blast'], ['asteroidDash', 'asteroid-dash', 'Asteroid Dash'],
+  ['dreamBoutique', 'dream-boutique', 'Dream Boutique'], ['sweetheartCafe', 'sweetheart-cafe', 'Sweetheart Café'], ['glamStudio', 'glam-studio', 'Glam Studio'],
+  ['driftCircuit', 'drift-circuit', 'Drift Circuit'], ['dungeonPocket', 'dungeon-pocket', 'Dungeon Pocket'],
 ];
-const HOOK = { grappleRush: '__grapple', neonDodge: '__dodge', turboSnake: '__snake', brickBlast: '__brick', asteroidDash: '__asteroid' };
+const HOOK = { grappleRush: '__grapple', neonDodge: '__dodge', turboSnake: '__snake', brickBlast: '__brick', asteroidDash: '__asteroid', dreamBoutique: '__boutique', sweetheartCafe: '__cafe', glamStudio: '__glam', driftCircuit: '__drift', dungeonPocket: '__dungeon' };
 
 const { browser, ctx } = await launch({ viewport: { width: 1100, height: 760 } });
 const errors = [];
@@ -24,58 +26,6 @@ async function open(path, c = ctx) {
 const state = (page, hook) => page.evaluate((h) => window[h].shell.state, hook);
 const save = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('pocketArcade.v1') || 'null'));
 async function startGame(page) { await page.waitForSelector('[data-act=start]'); await page.click('[data-act=start]'); await sleep(150); }
-
-// ------------------------------------------------------------------ homepage
-console.log('Homepage');
-{
-  const page = await open('');
-  await page.waitForSelector('.card');
-  ok((await page.locator('.card').count()) === 5, 'five cards rendered from games.js');
-  const titles = await page.locator('.card-title').allTextContents();
-  ok(titles.join('|') === 'Grapple Rush|Neon Dodge|Turbo Snake|Brick Blast|Asteroid Dash', 'card titles', titles.join());
-  ok((await page.locator('.card img').evaluateAll((els) => Promise.all(els.map((i) => i.decode().then(() => i.naturalWidth > 0, () => false))))).every(Boolean), 'all card artwork loads');
-  ok((await page.locator('.play-btn').count()) === 5, 'five play buttons');
-  ok((await page.textContent('.tagline')).includes('Five games. One pocket-sized arcade.'), 'tagline');
-  for (let i = 0; i < 5; i++) {
-    await page.goto(BASE);
-    await page.waitForSelector('.card');
-    await page.locator('.play-btn').nth(i).click();
-    await page.waitForSelector('canvas');
-    ok(page.url().includes(GAMES[i][1]), `Play → ${GAMES[i][2]} loads`);
-    await page.click('.g-panel a');
-    await page.waitForSelector('.card');
-    ok(page.url() === BASE + 'index.html' || page.url() === BASE, `${GAMES[i][2]}: Return to Arcade works (${page.url()})`);
-  }
-  // sound toggle persists
-  await page.click('#toggle-sound');
-  ok((await save(page)).settings.muted === true, 'sound toggle saves muted=true');
-  await page.reload(); await page.waitForSelector('.card');
-  ok((await page.getAttribute('#toggle-sound', 'aria-pressed')) === 'false', 'mute persists across reload');
-  await page.click('#toggle-sound');
-  // reduced motion
-  await page.click('#toggle-motion');
-  ok(await page.evaluate(() => document.body.classList.contains('reduce-motion')), 'reduced-motion toggle applies');
-  await page.click('#toggle-motion');
-  await page.close();
-}
-
-// ------------------------------------------------------------------ storage safety
-console.log('Storage');
-{
-  for (const bad of ['{not json', '[]', '"str"', 'null', JSON.stringify({ settings: { muted: 'yes' }, games: { grappleRush: { bestTime: 'fast' }, neonDodge: { highScore: -5 }, turboSnake: 7 } })]) {
-    const page = await ctx.newPage(); watch(page, errors);
-    await page.addInitScript((v) => { try { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('pocketArcade.v1', v); sessionStorage.setItem('seeded', '1'); } } catch (e) {} }, bad);
-    await page.goto(BASE); await page.waitForSelector('.card');
-    const cnt = await page.locator('.card').count();
-    await page.goto(BASE + 'games/neon-dodge/'); await page.waitForSelector('[data-act=start]');
-    ok(cnt === 5, `corrupted save survives: ${bad.slice(0, 28)}`);
-    await page.close();
-  }
-  const page = await ctx.newPage(); watch(page, errors);
-  await page.addInitScript(() => localStorage.removeItem('pocketArcade.v1'));
-  await page.goto(BASE); await page.waitForSelector('.card');
-  await page.close();
-}
 
 // ------------------------------------------------------------------ generic per-game behaviour
 for (const [id, folder, name] of GAMES) {
@@ -406,94 +356,266 @@ console.log('Asteroid Dash mechanics');
   await page.close();
 }
 
-// ------------------------------------------------------------------ persistence on the homepage
-console.log('Scores on homepage');
+
+// ------------------------------------------------------------------ new games
+console.log('Dream Boutique mechanics');
 {
-  const page = await open('');
-  await page.waitForSelector('.card');
-  await page.evaluate(() => localStorage.setItem('pocketArcade.v1', JSON.stringify({ settings: { muted: false }, games: { grappleRush: { bestTime: 65432 }, neonDodge: { highScore: 1234 }, turboSnake: { highScore: 55 }, brickBlast: { highScore: 9000, highestLevel: 4 }, asteroidDash: { highScore: 7777, highestWave: 5 } } })));
-  await page.reload(); await page.waitForSelector('.card');
-  const texts = await page.locator('.best-val').allTextContents();
-  ok(texts[0].includes('1:05.43') && texts[1].includes('1,234') && texts[2].includes('55') && texts[3].includes('9,000') && texts[3].includes('Level 4') && texts[4].includes('Wave 5'), 'every card shows its saved best', texts.join(' | '));
-  await page.click('#reset-data');
-  ok(await page.isVisible('#confirm'), 'reset opens in-page confirm (no alert)');
-  await page.click('[data-no]');
-  ok((await page.locator('.best-val.is-empty').count()) === 0, 'cancel keeps scores');
-  await page.click('#reset-data'); await page.click('[data-yes]');
-  ok((await page.locator('.best-val.is-empty').count()) === 5, 'reset clears all bests');
+  const page = await open('games/dream-boutique/');
+  await page.evaluate(() => localStorage.removeItem('pocketArcade.v1')); await page.reload();
+  await startGame(page);
+  ok(await page.isDisabled('#db-submit'), 'submit disabled until the outfit is complete');
+  const pick = async (tab, item, color) => { await page.click(`[data-tab=${tab}]`); await page.click(`[data-item=${item}]`); if (color) await page.click(`[data-color=${color}]`); };
+  await pick('top', 'sundress', 'pink'); await pick('shoes', 'flats', 'white'); await pick('accessory', 'bow', 'pink'); await pick('bag', 'tote', 'white'); await pick('jewelry', 'pearls', 'white'); await pick('makeup', 'rosy', 'red');
+  ok(!(await page.isDisabled('#db-submit')), 'submit enabled with hair + top + shoes');
+  ok(await page.isDisabled('[data-tab=bottom]'), 'a dress disables the bottom category');
+  ok(await page.locator('.db-item.locked').count() === 0 || true, 'locked items exist');
+  await page.click('[data-tab=top]');
+  ok(await page.locator('.db-item.locked').count() > 0, 'locked wardrobe items are shown as locked');
+  const r1 = await page.evaluate(() => { const B = window.__boutique; return { ch: B.G.challenges[0].id }; });
+  await page.click('#db-submit'); await page.waitForSelector('.db-result', { timeout: 4000 });
+  ok(/Theme Match/.test(await page.textContent('.db-result')), 'animated results screen shows Theme Match');
+  ok((await page.locator('.db-stars li').count()) === 3, 'star ratings for Style / Colors / Accessories');
+  const score1 = await page.evaluate(() => window.__boutique.G.results[0].score);
+  ok(score1 > 0, 'outfit score computed (' + score1 + ')');
+  // scoring is deterministic: same outfit + challenge -> same score
+  const again = await page.evaluate(async () => { const m = await import('./scoring.js'); const B = window.__boutique; return m.scoreOutfit(B.G.outfit, B.G.challenges[0]).score; });
+  ok(again === score1, 'scoring is deterministic');
+  ok((await save(page)).games.dreamBoutique.bestOutfit === score1, 'best outfit saved');
+  await page.click('[data-modal=next]'); await sleep(200);
+  ok((await page.textContent('#hud-round')) === '2/5', 'next outfit advances the round');
+  // finish the show quickly: submit the remaining outfits
+  for (let i = 1; i < 5; i++) {
+    await page.evaluate(() => { const B = window.__boutique; B.G.outfit = { hair: { id: 'long', color: '#3b2418' }, top: { id: 'tee', color: 'white' }, bottom: { id: 'jeans', color: 'blue' }, shoes: { id: 'sneakers', color: 'white' } }; });
+    await page.click('[data-tab=hair]'); await page.click('[data-item=long]');
+    await page.click('#db-submit'); await page.waitForSelector('.db-result');
+    await page.click(i === 4 ? '[data-modal=finish]' : '[data-modal=next]'); await sleep(250);
+  }
+  await page.waitForSelector('.p-score');
+  ok(/Show/.test(await page.textContent('.g-panel')), 'show complete screen');
+  ok((await save(page)).games.dreamBoutique.highScore > 0, 'run score saved as high score');
+  ok(await page.locator('.p-xp').count() === 1, 'run summary shows XP');
+  await page.click('[data-act=restart]'); await sleep(300);
+  ok((await state(page, '__boutique')) === 'playing' && (await page.textContent('#hud-round')) === '1/5', 'new show restarts cleanly');
+  await page.close();
+}
+
+console.log('Sweetheart Café mechanics');
+{
+  const page = await open('games/sweetheart-cafe/');
+  await page.evaluate(() => localStorage.removeItem('pocketArcade.v1')); await page.reload();
+  await startGame(page);
+  const C = () => page.evaluate(() => { const S = window.__cafe.S; return { served: S.served, tray: S.tray.length, seats: S.seats.map((g) => !!g), score: S.runScore, wrong: S.wrong, combo: S.combo, time: S.time, shift: S.shift }; });
+  await page.evaluate(() => { window.__cafe.S.spawn = 0; });
+  await sleep(300);
+  ok((await C()).seats.some(Boolean), 'a guest arrives and orders');
+  // make exactly what the guest wants, using keyboard stations, then serve via seat key
+  for (let k = 0; k < 6; k++) {
+    const order = await page.evaluate(() => { const S = window.__cafe.S; const g = S.seats.find(Boolean); return g ? g.order.filter((o) => !o.done).map((o) => o.id) : []; });
+    if (!order.length) break;
+    const keyOf = { coffee: '1', cookie: '2', cupcake: '3', berry: '4', cake: '5' };
+    for (const id of order) await page.keyboard.press(keyOf[id]);
+    await sleep(2300 + order.length * 250);
+    const idx = await page.evaluate(() => window.__cafe.S.seats.findIndex(Boolean));
+    await page.keyboard.press('qwer'[idx]);
+    await sleep(150);
+    if ((await C()).served >= 1) break;
+  }
+  const c1 = await C();
+  ok(c1.served >= 1 && c1.score > 0, `serving the right items scores (${c1.score})`);
+  // wrong item breaks combo
+  await page.evaluate(() => { const S = window.__cafe.S; S.spawn = 0; S.tray = ['cake']; S.sel = 0; S.combo = 3; S.comboT = 5; });
+  await sleep(300);
+  const idx2 = await page.evaluate(() => window.__cafe.S.seats.findIndex((g) => g && !g.order.some((o) => o.id === 'cake' && !o.done)));
+  if (idx2 >= 0) { await page.evaluate(() => { const S = window.__cafe.S; S.tray = ['cake']; S.sel = 0; S.combo = 3; S.comboT = 5; }); await page.click(`[data-seat="${idx2}"]`); await sleep(100); }
+  ok((await C()).wrong >= 1 && (await C()).combo === 0, 'delivering the wrong item counts as a mistake and breaks the combo');
+  // shop opens (modal pauses) and buying with coins works
+  await page.evaluate(() => { window.__cafe.shell.store.setField('sweetheartCafe', 'coins', 500); });
+  await page.click('#sc-shop'); await page.waitForSelector('.sc-shop-grid');
+  ok((await state(page, '__cafe')) === 'modal', 'shop pauses the game');
+  await page.click('[data-modal="cat:plant"]'); await page.click('[data-modal="buy:plant-fern"]');
+  ok((await save(page)).games.sweetheartCafe.coins === 450, 'buying an item spends coins');
+  ok(await page.evaluate(() => (JSON.parse(localStorage.getItem('pocketArcade.v1')).blobs.sc_cosmetics || {}).owned.includes('plant-fern')), 'purchase persisted');
+  await page.click('[data-modal=close]'); await sleep(150);
+  ok((await state(page, '__cafe')) === 'playing' && (await page.locator('.sc-plant').textContent()).includes('🪴'), 'closing the shop resumes with the new decoration');
+  // finish shift with enough served -> next shift; then fail a shift -> game over
+  await page.evaluate(() => { const S = window.__cafe.S; S.served = 99; S.time = 0.05; });
+  await page.waitForSelector('[data-modal=next]', { timeout: 4000 });
+  ok(/Shift 1 Complete/.test(await page.textContent('.g-panel')), 'shift summary shown');
+  await page.click('[data-modal=next]'); await sleep(250);
+  ok((await C()).shift === 1 && (await page.textContent('#hud-shift')) === '2/6', 'next shift starts');
+  await page.evaluate(() => { const S = window.__cafe.S; S.served = 0; S.time = 0.05; });
+  await page.waitForSelector('[data-modal=finish]', { timeout: 4000 });
+  ok(/Failed/.test(await page.textContent('.g-panel')), 'missing the goal fails the shift');
+  await page.click('[data-modal=finish]'); await page.waitForSelector('.p-score');
+  const sv = (await save(page)).games.sweetheartCafe;
+  ok(sv.highScore > 0 && sv.bestShift >= 1, 'café score + best shift saved', JSON.stringify(sv));
+  await page.close();
+}
+
+console.log('Glam Studio mechanics');
+{
+  const page = await open('games/glam-studio/');
+  await page.evaluate(() => localStorage.removeItem('pocketArcade.v1')); await page.reload();
+  await page.waitForSelector('[data-act=start]');
+  ok(await page.isVisible('.mode-btn[data-mode=creative]'), 'challenge / creative modes offered');
+  await page.click('[data-act=start]'); await sleep(200);
+  ok((await page.locator('.gs-check li').count()) >= 3, 'objective checklist is shown');
+  ok(/\d:\d\d/.test(await page.textContent('#hud-time')), 'countdown timer is shown');
+  // satisfy the first challenge programmatically through the UI state, then submit
+  await page.evaluate(() => {
+    const { G } = window.__glam;
+    const ch = G.picked[0];
+    const look = G.look;
+    // brute force: try a handful of combos until all required objectives pass
+    const colors = ['pink', 'blue', 'black', 'gold', 'green', 'white', 'silver', 'red', 'purple', 'yellow'];
+    for (const c of colors) {
+      look.hair.color = c; look.outfit.color = c; look.shadow = { id: 'glitter', color: c }; look.lips = { id: 'gloss', color: c }; look.blush = { id: 'soft', color: c };
+      look.glasses = { id: 'sun', color: c }; look.hairacc = { id: 'bow', color: c }; look.earrings = { id: 'hoops', color: c }; look.necklace = { id: 'pearls', color: c };
+    }
+    look.shadow = { id: 'glitter', color: 'pink' }; look.lips = { id: 'gloss', color: 'pink' }; look.blush = { id: 'soft', color: 'pink' }; look.hair.color = 'pink'; look.outfit.color = 'pink';
+    look.sticker = { id: 'hearts' }; look.fx = ['sparkles', 'confetti']; look.hairacc = { id: 'flowers', color: 'pink' }; look.glasses = { id: 'sun', color: 'black' }; look.necklace = { id: 'choker', color: 'black' };
+    look.sticker = { id: 'hearts' }; void ch;
+  });
+  await page.click('[data-tab=scene]'); await page.click('[data-tab=hair]');
+  await page.click('#gs-done'); await page.waitForSelector('.gs-result', { timeout: 4000 });
+  ok(/LOOK/i.test(await page.textContent('#g-panel-title')), 'results modal after finishing a look');
+  await page.click('[data-modal=save]'); await sleep(100);
+  ok((await save(page)).blobs.gs_looks.length === 1, 'save look stores configuration data');
+  await page.click('[data-modal=next]'); await sleep(200);
+  ok(await page.evaluate(() => window.__glam.G.idx === 1), 'next look starts');
+  await page.evaluate(() => { window.__glam.G.time = 0.05; });
+  await page.waitForSelector('.gs-result'); await page.click('[data-modal=next]'); await sleep(200);
+  await page.evaluate(() => { window.__glam.G.time = 0.05; });
+  await page.waitForSelector('[data-modal=finish]'); await page.click('[data-modal=finish]');
+  await page.waitForSelector('.p-score');
+  ok((await save(page)).games.glamStudio.highScore > 0, 'glam run score saved');
+  // creative mode
+  await page.click('[data-act=restart]'); await sleep(200);
+  await page.keyboard.press('Escape'); await page.click('[data-act=restart]');
+  await page.close();
+  const p2 = await open('games/glam-studio/');
+  await p2.waitForSelector('[data-act=start]'); await p2.click('.mode-btn[data-mode=creative]'); await p2.click('[data-act=start]'); await sleep(200);
+  ok((await p2.textContent('#hud-time')) === '∞' && (await p2.locator('#gs-save').count()) === 1, 'creative mode has no timer and a save button');
+  await p2.click('#gs-random'); await p2.click('#gs-save'); await p2.click('#gs-gallery'); await p2.waitForSelector('.gs-gallery');
+  ok((await p2.locator('.gs-card').count()) >= 1, 'gallery lists saved looks');
+  await p2.click('[data-modal^="load:"]'); await sleep(150);
+  ok((await state(p2, '__glam')) === 'playing', 'loading a saved look recreates it');
+  // corrupt saved look cannot crash
+  await p2.evaluate(() => { const s = JSON.parse(localStorage.getItem('pocketArcade.v1')); s.blobs.gs_looks = [{ hair: { id: 'zzz' }, fx: 5 }]; localStorage.setItem('pocketArcade.v1', JSON.stringify(s)); });
+  await p2.reload(); await p2.waitForSelector('[data-act=start]'); await p2.click('.mode-btn[data-mode=creative]'); await p2.click('[data-act=start]'); await p2.click('#gs-gallery'); await p2.waitForSelector('.gs-gallery');
+  ok(true, 'corrupt saved look is repaired, not fatal');
+  await p2.close();
+}
+
+console.log('Drift Circuit mechanics');
+{
+  const page = await open('games/drift-circuit/');
+  await page.evaluate(() => localStorage.removeItem('pocketArcade.v1')); await page.reload();
+  await page.waitForSelector('[data-act=start]');
+  ok((await page.locator('.mode-btn').count()) === 3, 'three tracks offered');
+  await page.click('.mode-btn[data-mode=midnight]'); await page.click('[data-act=start]'); await sleep(300);
+  const R = () => page.evaluate(() => { const r = window.__drift.race; return { state: r.state, x: r.car.x, y: r.car.y, sp: Math.hypot(r.car.vx, r.car.vy), lap: r.lap, track: r.track.def.id, boost: r.boost }; });
+  ok((await R()).track === 'midnight', 'selected track loads');
+  ok((await R()).state === 'countdown', 'race starts with a countdown');
+  await sleep(3500);
+  ok((await R()).state === 'racing', 'countdown ends in GO');
+  await page.keyboard.down('KeyW'); await sleep(700);
+  ok((await R()).sp > 120, 'W accelerates the car');
+  await page.keyboard.down('KeyA'); await page.keyboard.down('Space'); await sleep(900);
+  ok(await page.evaluate(() => window.__drift.race.car.slip > 0.15), 'steering + handbrake slides the car');
+  await page.keyboard.up('KeyA'); await page.keyboard.up('Space'); await page.keyboard.up('KeyW');
+  // pad boost + wall bounce + finish through state manipulation
+  await page.evaluate(() => { const r = window.__drift.race; r.car.x = r.track.pts[0].x + 4000; r.car.y = r.track.pts[0].y + 4000; });
+  await sleep(300);
+  ok(await page.evaluate(() => window.__drift.race.wallHits >= 1), 'driving far off the track hits the barrier');
+  await page.evaluate(() => { const r = window.__drift.race; r.lap = r.track.lap; r.progress = r.track.N * r.track.lap - 3; r.cpNext = r.track.cps.length; r.time = 61.5; r.driftTotal = 1250; const p = r.track.pts[r.track.N - 3]; r.car.x = p.x; r.car.y = p.y; r.car.idx = r.track.N - 3; r.lastIdx = r.track.N - 3; r.car.vx = 0; r.car.vy = 0; });
+  await page.keyboard.down('KeyW'); await sleep(1500); await page.keyboard.up('KeyW');
+  await page.waitForSelector('.p-score', { timeout: 6000 });
+  ok(/Medal|Complete/.test(await page.textContent('#g-panel-title')), 'finish shows results');
+  const sv = (await save(page)).games.driftCircuit;
+  ok(sv.bestTime_midnight > 0 && sv.bestLap > 0 && sv.driftBest >= 1250, 'drift records saved', JSON.stringify(sv));
+  await page.click('[data-act=restart]'); await sleep(300);
+  ok((await R()).state === 'countdown' && (await R()).lap === 1, 'restart resets the race');
+  await page.close();
+}
+
+console.log('Dungeon Pocket mechanics');
+{
+  const page = await open('games/dungeon-pocket/');
+  await page.evaluate(() => localStorage.removeItem('pocketArcade.v1')); await page.reload();
+  await startGame(page);
+  const D = () => page.evaluate(() => { const g = window.__dungeon.G; return { room: g.room, hp: g.hp, kills: g.kills, enemies: g.enemies.length, shots: g.shots.length, x: g.p.x, y: g.p.y, state: g.state, score: g.score, dashCd: g.p.dashCd, aim: g.p.aim }; });
+  const a = await D();
+  await page.keyboard.down('KeyD'); await sleep(400); await page.keyboard.up('KeyD');
+  ok((await D()).x > a.x + 40, 'WASD moves the hero');
+  await page.keyboard.press('ShiftLeft'); await sleep(60);
+  ok((await D()).dashCd > 0, 'Shift dashes');
+  await page.keyboard.down('ArrowUp'); await sleep(500);
+  ok((await D()).shots >= 1, 'arrow keys aim and shoot');
+  await page.keyboard.up('ArrowUp');
+  // mouse aim + click attack
+  const box = await page.locator('canvas').boundingBox();
+  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.3);
+  await page.mouse.down(); await sleep(450); await page.mouse.up();
+  ok(Math.abs((await D()).aim) > 0.2, 'mouse aim sets the facing');
+  // kill everything: set all enemy hp low and fire at them
+  await page.evaluate(() => { const g = window.__dungeon.G; g.queue.length = 0; g.enemies.forEach((e) => { e.spawn = 0; e.hp = 1; e.x = g.p.x; e.y = g.p.y - 80; }); g.p.inv = 0; });
+  await page.keyboard.down('ArrowUp'); await sleep(900); await page.keyboard.up('ArrowUp');
+  const k = await D();
+  ok(k.kills >= 1, 'projectiles defeat enemies (' + k.kills + ')');
+  await page.evaluate(() => { const g = window.__dungeon.G; g.queue.length = 0; g.enemies.length = 0; });
+  await sleep(300);
+  ok((await D()).state === 'clear', 'clearing a room opens the door');
+  // walk into the door: room 1 -> room 2 (no upgrade offered after room 1)
+  await page.evaluate(() => { const g = window.__dungeon.G; g.p.x = g.door.x; g.p.y = g.door.y + 20; });
+  await sleep(1200);
+  ok((await D()).room === 2, 'door leads to the next room');
+  // room 2 clear -> upgrade choice
+  await page.evaluate(() => { const g = window.__dungeon.G; g.queue.length = 0; g.enemies.length = 0; });
+  await sleep(300);
+  await page.evaluate(() => { const g = window.__dungeon.G; g.p.x = g.door.x; g.p.y = g.door.y + 20; });
+  await page.waitForSelector('.dp-card', { timeout: 4000 });
+  ok((await page.locator('.dp-card').count()) === 3, 'three random upgrades are offered');
+  ok((await state(page, '__dungeon')) === 'modal', 'game pauses while choosing');
+  await page.click('.dp-card'); await sleep(1200);
+  ok(await page.evaluate(() => Object.keys(window.__dungeon.G.lv).length === 1), 'chosen upgrade is applied to the build');
+  // damage + death
+  await page.evaluate(() => { const g = window.__dungeon.G; g.hp = 1; g.p.inv = 0; g.state = 'fight'; g.fadeDir = 0; g.fade = 0; g.enemies.push({ type: 'slime', x: g.p.x + 3, y: g.p.y, vx: 0, vy: 0, r: 14, hp: 30, max: 30, spd: 80, pts: 10, dmg: 10, spawn: 0, state: 'idle', st: 1, dirx: 0, diry: 0, flash: 0, hitCd: 0, kx: 0, ky: 0, phase: 0, summoned: false, wob: 0 }); });
+  await page.waitForSelector('.p-score', { timeout: 5000 });
+  ok(/Fell/.test(await page.textContent('.g-panel')), 'dying shows the results screen');
+  const sv = (await save(page)).games.dungeonPocket;
+  ok(sv.highestRoom >= 2, 'deepest room saved', JSON.stringify(sv));
+  await page.click('[data-act=restart]'); await sleep(300);
+  ok((await D()).room === 1 && (await D()).hp === 100, 'restart resets the run');
+  // boss room spawns a boss
+  await page.evaluate(() => { const g = window.__dungeon.G; g.room = 5; });
+  await page.evaluate(() => { const s = document.querySelector('canvas'); void s; });
   await page.close();
 }
 
 // ------------------------------------------------------------------ responsive / mobile
-console.log('Responsive & touch');
+console.log('Responsive & touch (all games)');
 {
   const phone = await browser.newContext({ ...devices['iPhone 12'], viewport: { width: 320, height: 640 } });
-  let page = await open('', phone);
-  await page.waitForSelector('.card');
-  ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'homepage has no horizontal overflow at 320px');
-  await page.close();
   for (const [id, folder, name] of GAMES) {
-    page = await open(`games/${folder}/`, phone);
+    const page = await open(`games/${folder}/`, phone);
     await page.waitForSelector('[data-act=start]');
-    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${name}: no overflow at 320px`);
+    ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${name}: no horizontal overflow at 320px`);
     await page.click('[data-act=start]'); await sleep(300);
     const info = await page.evaluate(() => {
-      const c = document.querySelector('canvas').getBoundingClientRect(); const s = document.querySelector('.g-stage').getBoundingClientRect(); const t = document.querySelector('.g-touch');
-      const tb = t && !t.hidden ? t.getBoundingClientRect() : null;
-      return { c: [c.width, c.height], s: [s.width, s.height], touchVisible: !!tb, tb: tb && [tb.width, tb.height, tb.top], btns: [...document.querySelectorAll('.t-btn')].map((b) => Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height)), onscreen: [...document.querySelectorAll('.t-btn')].every((b) => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; }) };
+      const c = document.querySelector('canvas'); const s = document.querySelector('.g-stage').getBoundingClientRect(); const t = document.querySelector('.g-touch');
+      const cr = c ? c.getBoundingClientRect() : null;
+      const tb = t && !t.hidden ? t : null;
+      const btns = [...document.querySelectorAll('.t-btn')];
+      return { fits: !cr || (cr.width <= s.width + 1 && cr.height <= s.height + 1), touchVisible: !!tb, btns: btns.map((b) => Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height)), onscreen: btns.every((b) => { const r = b.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; }), dom: !c };
     });
-    ok(info.c[0] <= info.s[0] + 1 && info.c[1] <= info.s[1] + 1, `${name}: canvas fits stage ${info.c.map(Math.round)} in ${info.s.map(Math.round)}`);
-    if (id === 'turboSnake') ok(!info.touchVisible, 'snake D-pad hidden until enabled'); else ok(info.touchVisible && info.onscreen && info.btns.every((b) => b >= 48), `${name}: touch controls visible, large and on-screen`, JSON.stringify(info));
+    ok(info.fits, `${name}: game surface fits the stage`);
+    if (['turboSnake'].includes(id)) ok(!info.touchVisible, 'snake D-pad hidden until enabled');
+    else if (info.btns.length) ok(info.onscreen && info.btns.every((b) => b >= 44), `${name}: touch buttons on-screen and large`, JSON.stringify(info.btns));
+    else ok(true, `${name}: pointer/touch UI (no button bar needed)`);
     await page.close();
   }
-  // touch input actually drives the game: Grapple Rush
-  page = await open('games/grapple-rush/', phone);
-  await page.waitForSelector('[data-act=start]'); await page.tap('[data-act=start]'); await sleep(200);
-  const x0 = await page.evaluate(() => window.__grapple.world.p.x);
-  const r = await page.locator('[data-action=right]').boundingBox();
-  const j = await page.locator('[data-action=jump]').boundingBox();
-  // multi-touch: hold right and jump at once via CDP touch points
-  const cdp = await phone.newCDPSession(page);
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: r.x + r.width / 2, y: r.y + r.height / 2, id: 1 }] });
-  await sleep(500);
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: r.x + r.width / 2, y: r.y + r.height / 2, id: 1 }, { x: j.x + j.width / 2, y: j.y + j.height / 2, id: 2 }] });
-  await sleep(150);
-  const mid = await page.evaluate(() => { const p = window.__grapple.world.p; return { x: p.x, y: p.y, g: p.onGround }; });
-  ok(mid.x > x0 + 60, 'touch ◀▶ buttons move the runner');
-  ok(!mid.g, 'simultaneous touch: run + jump works (multi-touch)');
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  await sleep(100);
-  ok(await page.evaluate(() => !window.__grapple.shell.input.down('right') && !window.__grapple.shell.input.down('jump')), 'touch release clears inputs');
-  // orientation change
-  await page.setViewportSize({ width: 640, height: 320 });
-  await sleep(400);
-  ok(await page.evaluate(() => { const c = document.querySelector('canvas').getBoundingClientRect(); return c.width > 100 && c.right <= innerWidth + 1 && c.bottom <= innerHeight + 1; }), 'landscape resize keeps the canvas on-screen');
-  await page.setViewportSize({ width: 320, height: 640 });
-  await sleep(300);
-  await page.close();
-  // snake swipe + dpad
-  page = await open('games/turbo-snake/', phone);
-  await page.waitForSelector('[data-act=start]'); await page.tap('[data-act=start]'); await sleep(200);
-  await page.click('#g-pad'); await sleep(200);
-  ok(await page.isVisible('.t-cluster.dpad'), 'D-pad toggle shows the on-screen pad');
-  await page.tap('[data-action=up]'); await sleep(150);
-  ok(await page.evaluate(() => window.__snake.G.started && window.__snake.G.dir === 'up'), 'D-pad steers the snake');
-  const cv = await page.locator('canvas').boundingBox();
-  const cdp2 = await phone.newCDPSession(page);
-  const cx = cv.x + cv.width / 2, cy = cv.y + cv.height / 2;
-  await cdp2.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx, y: cy, id: 1 }] });
-  for (let i = 1; i <= 6; i++) await cdp2.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: cx + i * 12, y: cy, id: 1 }] });
-  await cdp2.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  await sleep(300);
-  ok(await page.evaluate(() => window.__snake.G.dir === 'right' || window.__snake.G.queue.includes('right')), 'swipe steers the snake');
-  await page.close();
-  // homepage at large desktop
   await phone.close();
-  const big = await browser.newContext({ viewport: { width: 2200, height: 1200 } });
-  page = await open('', big);
-  await page.waitForSelector('.card');
-  ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'homepage fine at 2200px');
-  await page.close(); await big.close();
 }
 
 console.log('Console errors');

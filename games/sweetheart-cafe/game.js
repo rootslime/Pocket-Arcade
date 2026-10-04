@@ -118,7 +118,7 @@ function build() {
     if (b) { const i = Number(b.dataset.slot); if (S.tray[i]) { S.sel = S.sel === i ? -1 : i; shell.sfx.play('click'); drawTray(); } return; }
     if (e.target.closest('#sc-bin')) discard();
   });
-  root.querySelector('#sc-shop').addEventListener('click', openShop);
+  root.querySelector('#sc-shop').addEventListener('click', () => openShop());
   window.removeEventListener('keydown', onKey);
   window.addEventListener('keydown', onKey);
   drawTray(); drawGoal();

@@ -32,7 +32,8 @@ for (const def of TRACK_DEFS) {
     const c = race.car;
     const tg = track.pts[(c.idx + 14) % track.N];
     let d = Math.atan2(tg.y - c.y, tg.x - c.x) - c.a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
-    race.step(1 / 60, { steer: Math.max(-1, Math.min(1, d * 2.4)), gas: 1, brake: 0, hand: i > 50 && i < 110, boost: false });
+    const drifting = i > 50 && i < 110;
+    race.step(1 / 60, { steer: drifting ? 0.6 : Math.max(-1, Math.min(1, d * 2.4)), gas: 1, brake: 0, hand: drifting, boost: false });
     evs.push(...race.events);
   }
   const dr = evs.filter((e) => e.type === 'driftEnd');

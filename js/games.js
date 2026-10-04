@@ -11,6 +11,7 @@
 //  scoreField  field in the save file shown as the headline record
 //  records     extra record rows for the profile / detail screens  { label, field, fmt: 'time'|'num' }
 //  controls    which input methods the game supports; controlsText is shown on the detail screen
+//  goal, tips  short copy for the "How to Play" dialog
 //  theme       { accent, background } used for the selected-game presentation
 export const CATEGORIES = [
   { id: 'all', label: 'All' }, { id: 'action', label: 'Action' }, { id: 'arcade', label: 'Arcade' },
@@ -22,6 +23,7 @@ export const GAMES = [
     id: 'grappleRush', slug: 'grapple-rush', title: 'Grapple Rush', tagline: 'Swing. Launch. Race.',
     description: 'Swing across neon rooftops and chase the fastest time. Release at the right moment to fling yourself across the gap.',
     genre: ['Action', 'Platformer'], categories: ['action'], path: 'games/grapple-rush/', icon: 'assets/icons/grapple-rush.svg',
+    goal: "Cross the rooftops and reach the finish gate as fast as you can.", tips: ["Hold grapple near a glowing node, release at the top of the swing to keep your speed.", "Falling sends you back to your last checkpoint \u2014 the clock keeps running."],
     scoreType: 'time', scoreField: 'bestTime', multiplayer: false,
     records: [{ label: 'Best Time', field: 'bestTime', fmt: 'time' }],
     controls: { keyboard: true, touch: true, gamepad: true },
@@ -32,6 +34,7 @@ export const GAMES = [
     id: 'neonDodge', slug: 'neon-dodge', title: 'Neon Dodge', tagline: 'Dodge the glow.',
     description: 'Survive an arena of lasers, walls and homing mines. Graze hazards for bonus points and grab power-ups.',
     genre: ['Arcade', 'Survival'], categories: ['arcade'], path: 'games/neon-dodge/', icon: 'assets/icons/neon-dodge.svg',
+    goal: "Survive as long as you can and build a score multiplier.", tips: ["Skim hazards for CLOSE! bonuses and bigger multipliers.", "Dash gives brief invulnerability \u2014 use it to blink through lasers."],
     scoreType: 'score', scoreField: 'highScore', multiplayer: false,
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }],
     controls: { keyboard: true, touch: true, gamepad: true },
@@ -42,6 +45,7 @@ export const GAMES = [
     id: 'turboSnake', slug: 'turbo-snake', title: 'Turbo Snake', tagline: 'Eat. Grow. Go Turbo.',
     description: 'The classic you know, plus a Turbo mode with power-ups, bonus food and ghost mode.',
     genre: ['Classic', 'Arcade'], categories: ['classic', 'arcade'], path: 'games/turbo-snake/', icon: 'assets/icons/turbo-snake.svg',
+    goal: "Eat food to grow without hitting walls or yourself.", tips: ["Turbo mode adds bonus food and power-ups.", "Quick turns are buffered so you never reverse into yourself."],
     scoreType: 'score', scoreField: 'highScore', multiplayer: false,
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Classic', field: 'classicHigh', fmt: 'num' }, { label: 'Turbo', field: 'turboHigh', fmt: 'num' }],
     controls: { keyboard: true, touch: true, gamepad: true },
@@ -52,6 +56,7 @@ export const GAMES = [
     id: 'brickBlast', slug: 'brick-blast', title: 'Brick Blast', tagline: 'Aim. Smash. Repeat.',
     description: 'Smash through six handcrafted levels. Aim with your paddle, catch power-ups and keep the ball alive.',
     genre: ['Arcade', 'Breakout'], categories: ['arcade'], path: 'games/brick-blast/', icon: 'assets/icons/brick-blast.svg',
+    goal: "Break every brick across six levels without losing your last ball.", tips: ["Hit the ball with the paddle edge to steer it.", "Catch falling capsules for wide paddle, multi-ball and more."],
     scoreType: 'score', scoreField: 'highScore', multiplayer: false,
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Highest Level', field: 'highestLevel', fmt: 'num', min: 2 }],
     controls: { keyboard: true, touch: true, gamepad: true },
@@ -62,6 +67,7 @@ export const GAMES = [
     id: 'asteroidDash', slug: 'asteroid-dash', title: 'Asteroid Dash', tagline: 'Fly. Fight. Survive.',
     description: 'Blast rocks, dodge saucers and survive endless waves with momentum-based flying and upgrades.',
     genre: ['Action', 'Space Shooter'], categories: ['action', 'arcade'], path: 'games/asteroid-dash/', icon: 'assets/icons/asteroid-dash.svg',
+    goal: "Survive wave after wave of asteroids, saucers and comets.", tips: ["You keep drifting after you stop thrusting \u2014 plan your turns.", "Chain kills for bonus points and grab upgrades."],
     scoreType: 'score', scoreField: 'highScore', multiplayer: false,
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Highest Wave', field: 'highestWave', fmt: 'num', min: 2 }],
     controls: { keyboard: true, touch: true, gamepad: true },
@@ -72,6 +78,7 @@ export const GAMES = [
     id: 'dreamBoutique', slug: 'dream-boutique', title: 'Dream Boutique', tagline: 'Style the moment.',
     description: 'Fashion styling challenges: read the brief, build the outfit and wow the crowd. Win to unlock new looks.',
     genre: ['Creative', 'Fashion'], categories: ['creative', 'cozy'], path: 'games/dream-boutique/', icon: 'assets/icons/dream-boutique.svg',
+    goal: "Style five outfits that match each event brief.", tips: ["Read the Required and Bonus list, then match the style tags.", "Win challenges to unlock new clothes and backdrops."],
     scoreType: 'score', scoreField: 'highScore', multiplayer: false,
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Best Outfit', field: 'bestOutfit', fmt: 'num' }, { label: 'Challenges Won', field: 'wins', fmt: 'num' }],
     controls: { keyboard: true, touch: true, gamepad: false },
@@ -82,6 +89,7 @@ export const GAMES = [
     id: 'sweetheartCafe', slug: 'sweetheart-cafe', title: 'Sweetheart Café', tagline: 'Serve with a smile.',
     description: 'Run a cozy café: brew, bake and serve before patience runs out. Earn coins and decorate your shop.',
     genre: ['Cozy', 'Management'], categories: ['cozy'], path: 'games/sweetheart-cafe/', icon: 'assets/icons/sweetheart-cafe.svg',
+    goal: "Serve enough guests every shift before their patience runs out.", tips: ["Make items at stations; they wait on your tray until you serve.", "Quick serves build combos and bigger tips. Spend coins in the shop."],
     scoreType: 'score', scoreField: 'highScore', multiplayer: false,
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Best Shift', field: 'bestShift', fmt: 'num' }, { label: 'Coins', field: 'coins', fmt: 'num' }],
     controls: { keyboard: true, touch: true, gamepad: false },
@@ -92,6 +100,7 @@ export const GAMES = [
     id: 'glamStudio', slug: 'glam-studio', title: 'Glam Studio', tagline: 'Make it sparkle.',
     description: 'Create themed looks against the clock or relax in creative mode. Unlock new styles as you play.',
     genre: ['Creative', 'Makeover'], categories: ['creative'], path: 'games/glam-studio/', icon: 'assets/icons/glam-studio.svg',
+    goal: "Complete every checklist item for each themed look before time runs out.", tips: ["Finish early for a time bonus.", "Creative mode has no timer and lets you save looks to a gallery."],
     scoreType: 'score', scoreField: 'highScore', multiplayer: false,
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Challenges Won', field: 'challengesWon', fmt: 'num' }],
     controls: { keyboard: true, touch: true, gamepad: false },
@@ -102,6 +111,7 @@ export const GAMES = [
     id: 'driftCircuit', slug: 'drift-circuit', title: 'Drift Circuit', tagline: 'Slide into the lead.',
     description: 'Top-down arcade racing: master the drift, charge your boost and chase gold on three tracks.',
     genre: ['Racing', 'Arcade'], categories: ['racing', 'action'], path: 'games/drift-circuit/', icon: 'assets/icons/drift-circuit.svg',
+    goal: "Finish three laps as quickly as possible. Chase the gold time.", tips: ["Hold the handbrake while turning to drift and charge your boost.", "Dirt shortcuts are faster in a straight line but grip is lower."],
     scoreType: 'time', scoreField: 'bestLap', multiplayer: false,
     records: [{ label: 'Best Lap', field: 'bestLap', fmt: 'time' }, { label: 'Neon City', field: 'bestTime_neon', fmt: 'time' }, { label: 'Sunset Coast', field: 'bestTime_sunset', fmt: 'time' }, { label: 'Midnight Circuit', field: 'bestTime_midnight', fmt: 'time' }, { label: 'Best Drift Score', field: 'driftBest', fmt: 'num' }],
     controls: { keyboard: true, touch: true, gamepad: true },
@@ -112,6 +122,7 @@ export const GAMES = [
     id: 'dungeonPocket', slug: 'dungeon-pocket', title: 'Dungeon Pocket', tagline: 'Clear. Upgrade. Survive.',
     description: 'Fight through stylized dungeon rooms, pick upgrades and build a champion. How deep can you go?',
     genre: ['Action', 'Dungeon'], categories: ['action'], path: 'games/dungeon-pocket/', icon: 'assets/icons/dungeon-pocket.svg',
+    goal: "Clear rooms, choose upgrades and defeat the mini-bosses.", tips: ["Red rings and lines telegraph attacks. Dash through danger.", "Combine upgrades to build a unique hero."],
     scoreType: 'score', scoreField: 'highScore', multiplayer: false,
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Deepest Room', field: 'highestRoom', fmt: 'num' }],
     controls: { keyboard: true, touch: true, gamepad: true },
