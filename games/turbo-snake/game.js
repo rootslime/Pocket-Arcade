@@ -14,7 +14,7 @@ const shake = new Shake();
 const G = {
   turbo: false, seg: [], prev: [], dir: 'right', queue: [], started: false, stepT: 0, speed: 8,
   food: null, bonus: null, power: null, fx: { slow: 0, double: 0, ghost: 0 },
-  score: 0, eaten: 0, t: 0, nextBonus: 8, nextPower: 10, over: false, bestLen: 3, flash: 0,
+  bonusCount: 0, ghostCount: 0, score: 0, eaten: 0, t: 0, nextBonus: 8, nextPower: 10, over: false, bestLen: 3, flash: 0,
 };
 
 const bestField = (mode) => (mode === 'turbo' ? 'turboHigh' : 'classicHigh');
@@ -33,6 +33,7 @@ const shell = createShell({
     { id: 'len', label: 'LENGTH', init: '3' },
   ],
   best: { field: bestField, kind: 'high', label: 'BEST' },
+  gamepad: { up: ['dpadUp', 'lsUp'], down: ['dpadDown', 'lsDown'], left: ['dpadLeft', 'lsLeft'], right: ['dpadRight', 'lsRight'] },
   keys: {
     up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'], left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'],
   },
@@ -51,6 +52,7 @@ const shell = createShell({
       ['P / Esc', 'Pause'],
     ],
     touch: 'Swipe anywhere on the board to steer. Tap the pad button in the top bar for an on-screen D-pad.',
+    pad: 'D-pad or left stick to steer.',
     tips: [
       'Turbo mode: gold food is worth 5×, and power-ups give Slow-mo, Double points or Ghost (pass through yourself and wrap the walls).',
       'You can’t reverse into yourself — quick turns are queued.',
@@ -77,7 +79,7 @@ function reset(mode) {
   G.dir = 'right'; G.queue.length = 0; G.started = false; G.stepT = 0;
   G.speed = G.turbo ? 9 : 7.5;
   G.bonus = null; G.power = null; G.fx.slow = G.fx.double = G.fx.ghost = 0;
-  G.score = 0; G.eaten = 0; G.t = 0; G.nextBonus = 9; G.nextPower = 12; G.over = false; G.bestLen = 3; G.flash = 0;
+  G.bonusCount = 0; G.ghostCount = 0; G.score = 0; G.eaten = 0; G.t = 0; G.nextBonus = 9; G.nextPower = 12; G.over = false; G.bestLen = 3; G.flash = 0;
   G.food = null; spawnFood();
   fx.clear(); pops.clear(); shake.mag = 0;
   shell.hud('score', '0'); shell.hud('len', '3');
@@ -177,12 +179,14 @@ function step() {
   }
   if (G.bonus && G.bonus.x === nx && G.bonus.y === ny) {
     const pts = 50 * (G.fx.double > 0 ? 2 : 1);
+    G.bonusCount++;
     addScore(pts, cx, cy, '#ffe14d'); shell.sfx.play('powerup');
     fx.emit(cx, cy, 20, { speed: 220, life: 0.6, size: 5, color: ['#ffe14d', '#fff'] });
     G.bonus = null;
   }
   if (G.power && G.power.x === nx && G.power.y === ny) {
     const type = G.power.type;
+    if (type === 'ghost') G.ghostCount++;
     G.fx[type] = type === 'slow' ? 6 : type === 'double' ? 10 : 6;
     shell.sfx.play('powerup');
     pops.add(cx, cy - 20, { slow: 'SLOW-MO', double: 'DOUBLE POINTS', ghost: 'GHOST MODE' }[type], PU[type].color, 15);
@@ -216,6 +220,9 @@ function end(win, reason) {
     win, title: win ? 'Board Cleared!' : 'Game Over', subtitle: reason,
     score: G.score,
     extras: { highScore: G.score },
+    facts: { score: G.score, length: G.seg.length, mode: G.turbo ? 'turbo' : 'classic', bonus: G.bonusCount, ghost: G.ghostCount },
+    milestones: [['Length', Math.min(40, Math.floor(G.seg.length / 5) * 4)], ['Score milestones', Math.min(30, Math.floor(G.score / 100) * 3)]],
+    summary: `Score ${formatScore(G.score)} · ${G.turbo ? 'Turbo' : 'Classic'}`,
     stats: [
       ['Mode', G.turbo ? 'Turbo' : 'Classic'],
       ['Length', String(G.seg.length)],

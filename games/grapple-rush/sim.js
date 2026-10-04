@@ -3,8 +3,8 @@ import { LEVEL } from './level.js';
 
 export const PHYS = {
   gravity: 1750, fallMult: 1.18, maxFall: 1000,
-  run: 310, groundAccel: 3400, groundFriction: 3200, overspeedFriction: 900, airAccel: 1700, airDrag: 0.05,
-  jumpV: -625, cutJump: 0.45, coyote: 0.1, buffer: 0.12,
+  run: 290, groundAccel: 3400, groundFriction: 3200, overspeedFriction: 900, airAccel: 1700, airDrag: 0.05,
+  jumpV: -625, cutJump: 0.45, coyote: 0.15, buffer: 0.15,
   hw: 9, hh: 15,
   range: 460, aimRadius: 150,
   swingAccel: 950, reelIn: 240, reelOut: 200, ropeMin: 50, ropeSlack: 0.94,

@@ -16,7 +16,7 @@ const S = {
   p: { x: W / 2, y: H * 0.78, vx: 0, vy: 0, dashT: 0, dashCd: 0, dx: 0, dy: -1, inv: 0 },
   hz: [], pu: [], timers: [], warn: [],
   t: 0, score: 0, mult: 1, streak: 0, streakT: 0, grazes: 0, bestStreak: 0, picks: 0,
-  nextPattern: 1.2, nextPU: 9, last: '', fx: { shield: 0, slow: 0, double: 0, rapid: 0 },
+  nextPattern: 1.2, nextPU: 9, last: '', dashes: 0, live30: false, live120: false, fx: { shield: 0, slow: 0, double: 0, rapid: 0 },
   dead: false, scoreAcc: 0, pulse: 0,
 };
 let drag = null;
@@ -33,6 +33,7 @@ const shell = createShell({
     { id: 'mult', label: 'MULT', init: 'x1' },
   ],
   best: { field: 'highScore', kind: 'high', label: 'BEST' },
+  gamepad: { left: ['dpadLeft', 'lsLeft'], right: ['dpadRight', 'lsRight'], up: ['dpadUp', 'lsUp'], down: ['dpadDown', 'lsDown'], dash: ['a', 'rt', 'rb', 'x'] },
   keys: {
     left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'],
     up: ['ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
@@ -47,6 +48,7 @@ const shell = createShell({
       ['P / Esc', 'Pause'],
     ],
     touch: 'Drag anywhere to move. Tap DASH to blink through danger.',
+    pad: 'Left stick / D-pad move · A or RT dash.',
     tips: [
       'Skim close to hazards for “CLOSE!” bonuses — streaks raise your multiplier.',
       'Shield blocks one hit · Slow Time · x2 Score · Dash Charge.',
@@ -81,7 +83,7 @@ const shell = createShell({
 function reset() {
   Object.assign(S.p, { x: W / 2, y: H * 0.78, vx: 0, vy: 0, dashT: 0, dashCd: 0, dx: 0, dy: -1, inv: 0 });
   S.hz.length = 0; S.pu.length = 0; S.timers.length = 0; S.warn.length = 0;
-  Object.assign(S, { t: 0, score: 0, mult: 1, streak: 0, streakT: 0, grazes: 0, bestStreak: 0, picks: 0, nextPattern: 1.4, nextPU: 9, last: '', dead: false, scoreAcc: 0, pulse: 0 });
+  Object.assign(S, { t: 0, score: 0, mult: 1, streak: 0, streakT: 0, grazes: 0, bestStreak: 0, picks: 0, dashes: 0, live30: false, live120: false, nextPattern: 1.4, nextPU: 9, last: '', dead: false, scoreAcc: 0, pulse: 0 });
   S.fx.shield = S.fx.slow = S.fx.double = S.fx.rapid = 0;
   fx.clear(); pops.clear(); shake.mag = 0; drag = null;
   shell.hud('score', '0'); shell.hud('time', '0:00'); shell.hud('mult', 'x1');
@@ -209,6 +211,8 @@ function update(dt) {
   const i = shell.input;
   const p = S.p;
   S.t += dt;
+  if (!S.live30 && S.t >= 30) { S.live30 = true; shell.facts({ secs: S.t }); }
+  if (!S.live120 && S.t >= 120) { S.live120 = true; shell.facts({ secs: S.t }); }
   S.pulse = Math.max(0, S.pulse - dt * 3);
   scroll = (scroll + dt * (40 + S.t * 0.6)) % 48;
 
@@ -232,6 +236,7 @@ function update(dt) {
   p.dashCd = Math.max(0, p.dashCd - dt * (S.fx.rapid > 0 ? 2 : 1));
   p.inv = Math.max(0, p.inv - dt);
   if (i.pressed('dash') && p.dashCd <= 0 && p.dashT <= 0) {
+    S.dashes++;
     p.dashT = 0.15; p.dashCd = 1.9; p.inv = Math.max(p.inv, 0.2);
     shell.sfx.play('dash');
     fx.emit(p.x, p.y, 14, { speed: 180, life: 0.35, size: 4, color: ['#2de2e6', '#fff'] });
@@ -373,6 +378,9 @@ function die(h) {
   const sec = Math.floor(S.t);
   shell.finish({
     win: false, score: S.score,
+    facts: { secs: S.t, score: S.score, grazes: S.grazes, streak: S.bestStreak, picks: S.picks, dashes: S.dashes },
+    milestones: [['Survival time', Math.min(40, Math.floor(S.t / 10) * 4)], ['Near misses', Math.min(20, Math.floor(S.grazes / 5) * 2)], ['Score milestones', Math.min(30, Math.floor(S.score / 500) * 5)]],
+    summary: `Score ${formatScore(S.score)}`,
     stats: [
       ['Survived', `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`],
       ['Near misses', String(S.grazes)],

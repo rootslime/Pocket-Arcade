@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Sweetheart Café artwork">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe0ec"/><stop offset="1" stop-color="#ffb6d2"/></linearGradient></defs>
+<rect width="240" height="150" fill="url(#g)"/>
+<rect x="0" y="108" width="240" height="42" fill="#8a5a3a"/><rect x="0" y="108" width="240" height="6" fill="#a87244"/>
+<g transform="translate(34 40)"><rect x="0" y="22" width="44" height="40" rx="6" fill="#fff" stroke="#e9d4c4" stroke-width="3"/><path d="M44 30 q18 0 18 14 q0 14 -18 14" fill="none" stroke="#fff" stroke-width="7"/><path d="M12 14 q-6 -8 0 -14 M24 14 q-6 -8 0 -14 M36 14 q-6 -8 0 -14" fill="none" stroke="#ff9bb3" stroke-width="3" stroke-linecap="round"/></g>
+<g transform="translate(120 52)"><path d="M0 40 L10 18 L50 18 L60 40 Z" fill="#f6c28b"/><path d="M0 40 L60 40 L56 52 L4 52 Z" fill="#c98a52"/><circle cx="30" cy="12" r="22" fill="#ff7fb0"/><circle cx="18" cy="8" r="6" fill="#ff9bc6"/><circle cx="42" cy="6" r="6" fill="#ff9bc6"/><circle cx="30" cy="-12" r="6" fill="#ff3c5a"/></g>
+<path d="M200 20 c-10 -12 -26 4 0 22 c26 -18 10 -34 0 -22z" fill="#ff5f9a"/>
+<path d="M20 20 c-6 -7 -15 2 0 13 c15 -11 6 -20 0 -13z" fill="#ff9bb3"/>
+</svg>

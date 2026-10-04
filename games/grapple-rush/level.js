@@ -9,9 +9,9 @@ export const LEVEL = {
   platforms: [
     // 1 — run & jump (forgiving)
     roof(0, 520, 640),
-    roof(770, 520, 420),
-    roof(1340, 490, 300),
-    roof(1815, 470, 420),
+    roof(740, 520, 420),
+    roof(1280, 490, 300),
+    roof(1730, 470, 480),
     // 2 — first swing
     roof(2595, 470, 500),
     // 3 — chained swings
@@ -42,7 +42,7 @@ export const LEVEL = {
     { x: 9560, y: 90 }, { x: 9740, y: 120 },
   ],
   checkpoints: [
-    { x: 1960, y: 470 },
+    { x: 1900, y: 470 },
     { x: 4100, y: 400 },
     { x: 5700, y: 70 },
     { x: 7600, y: 360 },
@@ -51,7 +51,7 @@ export const LEVEL = {
   finish: { x: 10400, y: 300 },
   // On-screen coaching: shown while the player is between x and to.
   hints: [
-    { x: 0, to: 700, text: 'A / D to run  ·  SPACE to jump (hold for height)', touch: 'Use ◀ ▶ to run and JUMP to leap' },
+    { x: 0, to: 700, text: 'D to run  ·  press SPACE just before the roof edge to jump', touch: 'Use ◀ ▶ to run and JUMP to leap' },
     { x: 1900, to: 2500, text: 'Hold E or click a glowing node to grapple  ·  release to launch', touch: 'Hold GRAPPLE (or tap a node), release to launch' },
     { x: 3300, to: 4000, text: 'Chain swings: let go, then grab the next node', touch: 'Let go, then grab the next node' },
     { x: 4380, to: 4900, text: 'Hold SPACE while swinging to reel in and climb', touch: 'Hold JUMP while swinging to climb' },

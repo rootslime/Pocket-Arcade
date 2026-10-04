@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Dream Boutique artwork">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4a1650"/><stop offset="1" stop-color="#2b0f3e"/></linearGradient><filter id="b"><feGaussianBlur stdDeviation="3"/></filter></defs>
+<rect width="240" height="150" fill="url(#g)"/>
+<g fill="#ff8ad8" opacity=".25"><circle cx="30" cy="30" r="18"/><circle cx="210" cy="120" r="24"/></g>
+<path d="M60 20 L50 30 L50 56 L66 60 L66 120 L110 120 L110 60 L126 56 L126 30 L116 20 Q88 34 60 20 Z" fill="#ff8ad8" filter="url(#b)" opacity=".5" transform="translate(-4 4)"/>
+<path d="M56 24 Q88 40 120 24 L132 40 L118 50 L116 134 L60 134 L58 50 L44 40 Z" fill="#ff8ad8"/>
+<path d="M56 24 Q88 40 120 24" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/>
+<rect x="64" y="70" width="48" height="6" fill="#c23b8a"/>
+<g transform="translate(160 40)"><rect x="-22" y="14" width="44" height="34" rx="5" fill="#ffe14d"/><path d="M-12 14 Q0 -8 12 14" fill="none" stroke="#ffe14d" stroke-width="5"/></g>
+<g fill="#fff"><path d="M190 24 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z"/><path d="M30 100 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z"/></g>
+</svg>

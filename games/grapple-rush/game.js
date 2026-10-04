@@ -32,6 +32,7 @@ const shell = createShell({
     { id: 'cp', label: 'CHECKPOINT', init: `0/${LEVEL.checkpoints.length}` },
   ],
   best: { field: 'bestTime', kind: 'low', format: formatTime, label: 'BEST' },
+  gamepad: { left: ['dpadLeft', 'lsLeft'], right: ['dpadRight', 'lsRight'], jump: ['a', 'dpadUp'], down: ['dpadDown', 'lsDown'], grapple: ['x', 'rt', 'rb', 'lt'] },
   keys: {
     left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'],
     jump: ['Space', 'ArrowUp', 'KeyW'], down: ['ArrowDown', 'KeyS'],
@@ -54,6 +55,7 @@ const shell = createShell({
       ['R', 'Quick restart'],
     ],
     touch: '◀ ▶ run · JUMP leaps (hold to reel in) · hold GRAPPLE to swing, let go to launch. Tapping a node also targets it.',
+    pad: 'D-pad / left stick run · A jump (hold to reel in) · hold X or RT to grapple · Start pause.',
     tips: [
       'Releasing a swing keeps your speed — let go while rising to fling yourself across gaps.',
       'Falling just sends you back to your last checkpoint; the clock keeps running.',
@@ -172,6 +174,10 @@ function handle(ev, pressedNow) {
       const ms = world.ms;
       shell.finish({
         win: true, title: 'Run Complete!', score: ms, scoreText: formatTime(ms),
+        facts: { won: true, ms, falls: world.falls, grapples: world.grapples },
+        counters: { grapples: world.grapples },
+        milestones: [['Under 2:30', ms < 150000 ? 20 : 0], ['Under 1:30', ms < 90000 ? 30 : 0], ['No falls', world.falls === 0 ? 20 : 0]],
+        summary: `Time ${formatTime(ms)}`,
         stats: [
           ['Checkpoints', `${LEVEL.checkpoints.length}/${LEVEL.checkpoints.length}`],
           ['Falls', String(world.falls)],

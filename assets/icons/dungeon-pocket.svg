@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Dungeon Pocket artwork">
+<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#261444"/><stop offset="1" stop-color="#130d2a"/></linearGradient><filter id="b"><feGaussianBlur stdDeviation="4"/></filter></defs>
+<rect width="240" height="150" fill="url(#g)"/>
+<g fill="#1c1538"><rect x="0" y="110" width="60" height="40"/><rect x="60" y="110" width="60" height="40" fill="#191232"/><rect x="120" y="110" width="60" height="40"/><rect x="180" y="110" width="60" height="40" fill="#191232"/></g>
+<rect x="0" y="0" width="240" height="14" fill="#4a3a86"/>
+<circle cx="40" cy="30" r="18" fill="#ffb347" opacity=".35" filter="url(#b)"/><circle cx="40" cy="26" r="5" fill="#ffb347"/><circle cx="200" cy="30" r="18" fill="#ffb347" opacity=".35" filter="url(#b)"/><circle cx="200" cy="26" r="5" fill="#ffb347"/>
+<ellipse cx="170" cy="96" rx="22" ry="18" fill="#3fd47a"/><rect x="161" y="90" width="4" height="8" fill="#0a2a18"/><rect x="173" y="90" width="4" height="8" fill="#0a2a18"/><ellipse cx="163" cy="86" rx="6" ry="4" fill="#8dffb3"/>
+<path d="M60 70 L78 42 L96 70 Z" fill="#b07bff"/><circle cx="78" cy="82" r="14" fill="#9a62f0"/><rect x="72" y="80" width="5" height="5" fill="#ffe14d"/><rect x="82" y="80" width="5" height="5" fill="#ffe14d"/>
+<g transform="translate(118 92)"><path d="M-14 22 L0 -14 L14 22 Z" fill="#ff8a3d"/><circle cx="0" cy="-10" r="9" fill="#ffe0c0"/><path d="M-11 -12 L0 -32 L11 -12 Z" fill="#7a3cc0"/><path d="M12 0 L34 -14" stroke="#a9743a" stroke-width="4"/><circle cx="36" cy="-15" r="5" fill="#ffd08a"/></g>
+<g fill="#ffd08a"><circle cx="150" cy="78" r="3.5"/><circle cx="140" cy="82" r="3"/></g>
+<path d="M190 112 l6 8 -6 8 -6 -8z" fill="#ff5c7a"/>
+</svg>

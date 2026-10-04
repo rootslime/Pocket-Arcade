@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Drift Circuit artwork">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a0a2e"/><stop offset="1" stop-color="#3b1450"/></linearGradient><filter id="b"><feGaussianBlur stdDeviation="3"/></filter></defs>
+<rect width="240" height="150" fill="url(#g)"/>
+<path d="M-10 120 C 50 120 70 40 130 60 C 180 76 190 130 260 100" fill="none" stroke="#ff3c6e" stroke-width="46" opacity=".5" filter="url(#b)"/>
+<path d="M-10 120 C 50 120 70 40 130 60 C 180 76 190 130 260 100" fill="none" stroke="#2a2640" stroke-width="40"/>
+<path d="M-10 120 C 50 120 70 40 130 60 C 180 76 190 130 260 100" fill="none" stroke="#ffe14d" stroke-width="3" stroke-dasharray="14 12"/>
+<g transform="translate(112 54) rotate(-35)"><rect x="-24" y="-12" width="48" height="24" rx="8" fill="#ff8a3d"/><rect x="-6" y="-9" width="18" height="18" rx="4" fill="#2a1608"/><rect x="18" y="-9" width="5" height="6" fill="#ffe14d"/><rect x="18" y="3" width="5" height="6" fill="#ffe14d"/></g>
+<path d="M60 88 Q80 66 100 70" fill="none" stroke="#fff" stroke-width="5" opacity=".35" stroke-linecap="round"/>
+<path d="M54 98 Q78 70 98 80" fill="none" stroke="#fff" stroke-width="4" opacity=".25" stroke-linecap="round"/>
+<g fill="#2de2e6"><path d="M180 90 l12 -6 0 12z"/><path d="M196 90 l12 -6 0 12z"/></g>
+</svg>

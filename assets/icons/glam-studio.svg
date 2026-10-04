@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Glam Studio artwork">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a1b5e"/><stop offset="1" stop-color="#20103e"/></linearGradient></defs>
+<rect width="240" height="150" fill="url(#g)"/>
+<circle cx="120" cy="70" r="62" fill="#c78bff" opacity=".18"/>
+<path d="M72 60 Q70 14 120 12 Q170 14 168 60 Q150 36 120 36 Q90 36 72 60Z" fill="#6b4226"/>
+<ellipse cx="120" cy="72" rx="40" ry="48" fill="#f1c27d"/>
+<path d="M72 60 Q60 120 80 146 L90 100 Z" fill="#6b4226"/><path d="M168 60 Q180 120 160 146 L150 100 Z" fill="#6b4226"/>
+<ellipse cx="104" cy="66" rx="10" ry="6" fill="#a870ff" opacity=".7"/><ellipse cx="136" cy="66" rx="10" ry="6" fill="#a870ff" opacity=".7"/>
+<ellipse cx="104" cy="68" rx="6" ry="4" fill="#fff"/><ellipse cx="136" cy="68" rx="6" ry="4" fill="#fff"/><circle cx="104" cy="68" r="3" fill="#3a2418"/><circle cx="136" cy="68" r="3" fill="#3a2418"/>
+<ellipse cx="96" cy="86" rx="9" ry="5" fill="#ff8ad8" opacity=".5"/><ellipse cx="144" cy="86" rx="9" ry="5" fill="#ff8ad8" opacity=".5"/>
+<path d="M108 98 Q114 94 120 98 Q126 94 132 98 Q126 110 120 111 Q114 110 108 98Z" fill="#ff3c7a"/>
+<g fill="#fff"><path d="M30 30 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4z"/><path d="M200 40 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z"/><path d="M196 110 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2z"/></g>
+<path d="M176 40 c-6 -8 -14 2 0 12 c14 -10 6 -20 0 -12z" fill="#ff5f9a"/>
+</svg>
