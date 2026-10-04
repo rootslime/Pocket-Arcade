@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Turbo Snake artwork">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#052a1d"/><stop offset="1" stop-color="#0b1038"/></linearGradient>
+<filter id="b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+<rect width="240" height="150" fill="url(#g)"/>
+<g stroke="#5dff8f" stroke-opacity=".1"><path d="M0 25h240M0 50h240M0 75h240M0 100h240M0 125h240M30 0v150M60 0v150M90 0v150M120 0v150M150 0v150M180 0v150M210 0v150"/></g>
+<path d="M30 112H90V62H150V100H190" stroke="#5dff8f" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35" filter="url(#b)"/>
+<path d="M30 112H90V62H150V100H190" stroke="#5dff8f" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<path d="M30 112H90V62H150V100H190" stroke="#b9ffcf" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke-dasharray="1 12"/>
+<circle cx="194" cy="96" r="2.6" fill="#05121f"/><circle cx="194" cy="104" r="2.6" fill="#05121f"/>
+<circle cx="205" cy="38" r="12" fill="#ff3cac" filter="url(#b)"/><circle cx="205" cy="38" r="9" fill="#ff5c7a"/><path d="M205 29q5-8 9-6" stroke="#5dff8f" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>

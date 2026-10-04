@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Neon Dodge artwork">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#05163a"/><stop offset="1" stop-color="#14084d"/></linearGradient>
+<filter id="b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+<rect width="240" height="150" fill="url(#g)"/>
+<g stroke="#2de2e6" stroke-opacity=".12"><path d="M0 30h240M0 60h240M0 90h240M0 120h240M40 0v150M80 0v150M120 0v150M160 0v150M200 0v150"/></g>
+<rect x="0" y="52" width="240" height="4" fill="#ff3cac" filter="url(#b)"/><rect x="0" y="53" width="240" height="2" fill="#ffd0ee"/>
+<g fill="#ff3cac"><rect x="26" y="8" width="24" height="24" rx="3"/><rect x="170" y="14" width="30" height="20" rx="3"/><rect x="98" y="-6" width="18" height="34" rx="3"/></g>
+<g fill="#ffe14d" opacity=".9"><path d="M200 110l8 8-8 8-8-8z"/></g>
+<circle cx="120" cy="108" r="22" fill="none" stroke="#5dff8f" stroke-width="2" stroke-dasharray="5 4"/>
+<rect x="108" y="96" width="24" height="24" rx="4" fill="#2de2e6" filter="url(#b)"/><rect x="110" y="98" width="20" height="20" rx="3" fill="#e8ffff"/>
+</svg>
