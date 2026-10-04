@@ -122,6 +122,11 @@ export class World {
     const d = Math.hypot(a.x - p.x, a.y - (p.y - 4));
     this.rope = { ax: a.x, ay: a.y, len: Math.max(PHYS.ropeMin, d * PHYS.ropeSlack), max: d, anchor: a };
     this.grapples++;
+    if (p.onGround) {
+      // grappling from the ground yanks you toward the node so you leave the roof on a swing
+      const ux = (a.x - p.x) / d, uy = (a.y - (p.y - 4)) / d;
+      p.vx += ux * 330; p.vy += uy * 330; p.onGround = false; p.coyote = 0;
+    }
     this.events.push({ type: 'grapple', x: a.x, y: a.y });
     return true;
   }

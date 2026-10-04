@@ -30,7 +30,7 @@ function renderCards() {
     li.style.setProperty('--accent', g.accent);
     li.style.setProperty('--i', i);
     li.innerHTML = `
-      <a class="card-art" href="${g.path}" tabindex="-1" aria-hidden="true"><img src="${g.icon}" alt="" width="240" height="150" loading="lazy"></a>
+      <a class="card-art" href="${g.path}" tabindex="-1" aria-hidden="true"><img src="${g.icon}" alt="" width="240" height="150"></a>
       <div class="card-body">
         <span class="chip">${g.genre}</span>
         <h3 class="card-title">${g.title}</h3>
