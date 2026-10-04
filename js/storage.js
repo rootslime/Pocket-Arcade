@@ -20,6 +20,7 @@ const defaultGames = () => ({
   glamStudio: { highScore: 0, challengesWon: 0 },
   driftCircuit: { bestTime_neon: null, bestTime_sunset: null, bestTime_midnight: null, bestLap: null, driftBest: 0 },
   dungeonPocket: { highScore: 0, highestRoom: 0 },
+  pocketTag: { highScore: 0, longestEscape: 0 },
 });
 
 const defaultProfile = () => ({
@@ -34,7 +35,7 @@ const defaultProfile = () => ({
 });
 
 const defaults = () => ({
-  settings: { muted: false, reducedMotion: null, touchPad: false, quickLaunch: false },
+  settings: { muted: false, reducedMotion: null, touchPad: false, quickLaunch: false, showOnline: true },
   games: defaultGames(),
   profile: defaultProfile(),
   blobs: {},                 // small per-game JSON documents (unlocks, saved looks, café decor ...)

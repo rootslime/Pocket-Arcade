@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Pocket Tag artwork">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a1458"/><stop offset="1" stop-color="#0f6a4a"/></linearGradient><filter id="b"><feGaussianBlur stdDeviation="4"/></filter></defs>
+<rect width="240" height="150" fill="url(#g)"/>
+<g fill="#ffffff" opacity=".06"><rect x="0" y="100" width="240" height="6"/><rect x="0" y="120" width="240" height="6"/><rect x="0" y="140" width="240" height="6"/></g>
+<rect x="150" y="96" width="44" height="12" rx="3" fill="#ffb347"/><rect x="150" y="96" width="44" height="4" rx="2" fill="#ffd58f"/>
+<circle cx="150" cy="74" r="34" fill="#ff2d55" opacity=".45" filter="url(#b)"/>
+<g transform="translate(150 72)"><circle r="18" fill="#ff4d6d" stroke="#2a0a1a" stroke-width="3"/><circle cx="-5" cy="-7" r="8" fill="#fff" opacity=".35"/><circle cx="6" cy="-3" r="4" fill="#fff"/><circle cx="-2" cy="-3" r="4" fill="#fff"/><circle cx="7" cy="-3" r="1.8" fill="#10122e"/><circle cx="-1" cy="-3" r="1.8" fill="#10122e"/><circle r="26" fill="none" stroke="#ff2d55" stroke-width="3" stroke-dasharray="8 6"/></g>
+<rect x="122" y="42" width="56" height="16" rx="8" fill="#ff2d55"/><text x="150" y="54" font-family="Trebuchet MS, sans-serif" font-size="11" font-weight="900" text-anchor="middle" fill="#fff">IT!</text>
+<g transform="translate(78 92)"><circle r="14" fill="#2de2e6" stroke="#08203a" stroke-width="3"/><circle cx="-4" cy="-5" r="6" fill="#fff" opacity=".35"/><circle cx="5" cy="-2" r="3.5" fill="#fff"/><circle cx="-1" cy="-2" r="3.5" fill="#fff"/><circle cx="6" cy="-2" r="1.5" fill="#10122e"/><circle cx="0" cy="-2" r="1.5" fill="#10122e"/></g>
+<path d="M100 98 L126 92" stroke="#fff" stroke-width="3" opacity=".35" stroke-linecap="round"/><path d="M96 106 L120 102" stroke="#fff" stroke-width="3" opacity=".25" stroke-linecap="round"/>
+<g transform="translate(36 52)"><circle r="12" fill="#ffe14d" stroke="#3a2a00" stroke-width="3"/><circle cx="-3" cy="-4" r="5" fill="#fff" opacity=".35"/><circle cx="4" cy="-2" r="3" fill="#fff"/><circle cx="-1" cy="-2" r="3" fill="#fff"/></g>
+<text x="200" y="40" font-size="20">⚡</text><text x="30" y="122" font-size="18">💨</text>
+</svg>

@@ -174,7 +174,7 @@ export function createShell(cfg) {
   window.addEventListener('orientationchange', () => setTimeout(resize, 120));
 
   // ---------- overlay panels ----------
-  let panelName = null, prevPanel = null, overTimer = 0;
+  let panelName = null, prevPanel = null, overTimer = 0, liveMenu = false;
   const modes = cfg.modes || null;
   shell.mode = modes ? (store.getSetting('mode.' + cfg.id) || modes[0].id) : null;
   if (modes && !modes.some((m) => m.id === shell.mode)) shell.mode = modes[0].id;
@@ -201,6 +201,7 @@ export function createShell(cfg) {
   }
 
   function pauseHTML() {
+    if (cfg.pauseHTML) return cfg.pauseHTML(shell);
     return `
       <h2 id="g-panel-title">Paused</h2>
       <div class="p-menu">
@@ -238,14 +239,15 @@ export function createShell(cfg) {
     return `
       <h2 id="g-panel-title" class="${r.win ? 'is-win' : 'is-lose'}">${esc(r.title || (r.win ? 'Victory!' : 'Game Over'))}</h2>
       ${r.subtitle ? `<p class="p-sub">${esc(r.subtitle)}</p>` : ''}
+      ${r.extraHTML || ''}
       <div class="p-score" aria-label="Final result">${esc(r.scoreText)}</div>
       ${bestLine}
       ${stats ? `<ul class="p-stats">${stats}</ul>` : ''}
       ${progressHTML(r.progress)}
-      <div class="p-btns">
+      ${r.buttonsHTML ? `<div class="p-btns">${r.buttonsHTML}</div>` : `<div class="p-btns">
         <button type="button" class="g-btn primary big" data-act="restart">${esc(r.againLabel || 'Play Again')}</button>
         <a class="g-btn" href="../../index.html">Return to Arcade</a>
-      </div>`;
+      </div>`}`;
   }
 
   function showPanel(name, html) {
@@ -297,6 +299,7 @@ export function createShell(cfg) {
     if (mb && panelName === 'modal' && modalHandler) { sfx.unlock(); sfx.play('click'); modalHandler(mb.dataset.modal, mb); return; }
     const b = e.target.closest('[data-act]');
     if (!b) return;
+    if (cfg.onAct && cfg.onAct(b.dataset.act, b, shell)) { sfx.unlock(); return; }
     sfx.unlock();
     sfx.play('click');
     switch (b.dataset.act) {
@@ -330,11 +333,12 @@ export function createShell(cfg) {
     shell.state = s;
     app.dataset.state = s;
     input.active = s === 'playing';
-    if (s !== 'playing') input.clear();
+    if (s !== 'playing') { input.clear(); liveMenu = false; }
     $('g-pause').disabled = s !== 'playing';
   }
 
   function startRun() {
+    liveMenu = false;
     clearTimeout(overTimer);
     hidePanel();
     lastResult = null;
@@ -354,14 +358,33 @@ export function createShell(cfg) {
     if (canvas) canvas.focus({ preventScroll: true });
   }
   shell.restart = startRun;
+  shell.toReady = () => { clearTimeout(overTimer); hidePanel(); cfg.reset(shell.mode); setState('ready'); };
+  shell.showPanel = showPanel;
+  shell.hidePanel = hidePanel;
+  shell.instructionsHTML = instructionsHTML;
 
+  // Online matches can't freeze the world, so "pause" opens the menu while the match keeps running.
+  const isLive = () => !!(cfg.livePause && cfg.livePause());
+  function openLiveMenu() {
+    if (liveMenu) return;
+    liveMenu = true; input.clear(); input.active = false;
+    showPanel('pause', pauseHTML());
+  }
+  function closeLiveMenu() {
+    if (!liveMenu) return;
+    liveMenu = false; hidePanel(); input.active = shell.state === 'playing';
+  }
+  shell.openMenu = () => { if (shell.state === 'playing') pause(); };
+  Object.defineProperty(shell, 'liveMenu', { get: () => liveMenu });
   function pause() {
     if (shell.state !== 'playing') return;
+    if (isLive()) { openLiveMenu(); return; }
     setState('paused');
     if (cfg.onPause) cfg.onPause();
     showPanel('pause', pauseHTML());
   }
   function resume() {
+    if (liveMenu) { closeLiveMenu(); return; }
     if (shell.state !== 'paused') return;
     hidePanel();
     setState('playing');
@@ -420,7 +443,7 @@ export function createShell(cfg) {
   $('g-pause').addEventListener('click', () => { sfx.unlock(); pause(); });
   $('g-help').addEventListener('click', () => {
     sfx.unlock();
-    if (shell.state === 'playing') pause();
+    if (shell.state === 'playing' && !liveMenu) pause();
     if (shell.state === 'ready' || shell.state === 'modal') return;
     showPanel('help', instructionsHTML('Back', true));
   });
@@ -429,7 +452,8 @@ export function createShell(cfg) {
     const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable);
     if (typing) return;
     if (e.code === 'Escape' || e.code === 'KeyP') {
-      if (shell.state === 'playing') { e.preventDefault(); pause(); }
+      if (shell.state === 'playing' && !liveMenu) { e.preventDefault(); pause(); }
+      else if (shell.state === 'playing' && liveMenu) { e.preventDefault(); if (panelName === 'help') showPanel('pause', pauseHTML()); else closeLiveMenu(); }
       else if (shell.state === 'paused') {
         e.preventDefault();
         if (panelName === 'help') showPanel('pause', pauseHTML()); else resume();
@@ -445,9 +469,9 @@ export function createShell(cfg) {
       moveFocus(panel, e.code.slice(5).toLowerCase());
     }
   });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
-  window.addEventListener('blur', () => { if (shell.state === 'playing' && !shell.isTouch && !cfg.noBlurPause) pause(); });
-  window.addEventListener('pagehide', () => pause());
+  document.addEventListener('visibilitychange', () => { if (document.hidden && !isLive()) pause(); });
+  window.addEventListener('blur', () => { if (shell.state === 'playing' && !shell.isTouch && !cfg.noBlurPause && !isLive()) pause(); });
+  window.addEventListener('pagehide', () => { if (!isLive()) pause(); });
   store.subscribe(syncMute);
   // block page scroll / pull-to-refresh / pinch inside the game surface
   for (const el of cfg.dom ? [touchBar] : [stage, touchBar]) {
@@ -458,11 +482,11 @@ export function createShell(cfg) {
   // ---- controller: menu navigation inside overlays + Start to pause
   gp.initGamepad();
   gp.startMenuNav((d) => {
-    if (d === 'start') { if (shell.state === 'playing') pause(); else if (shell.state === 'paused' && panelName === 'pause') resume(); return; }
+    if (d === 'start') { if (shell.state === 'playing' && !liveMenu) pause(); else if (liveMenu || (shell.state === 'paused' && panelName === 'pause')) resume(); return; }
     if (overlay.hidden) return;
     if (d === 'select') { const el = document.activeElement; if (el && panel.contains(el)) el.click(); return; }
     if (d === 'back') {
-      if (shell.state === 'paused') { if (panelName === 'help') showPanel('pause', pauseHTML()); else resume(); }
+      if (shell.state === 'paused' || liveMenu) { if (panelName === 'help') showPanel('pause', pauseHTML()); else resume(); }
       return;
     }
     moveFocus(panel, d);
@@ -499,7 +523,7 @@ export function createShell(cfg) {
           input.endStep();
         }
       }
-    } else if ((shell.state === 'over' || shell.state === 'modal') && cfg.ambient) {
+    } else if ((shell.state === 'over' || shell.state === 'modal' || (shell.state === 'ready' && cfg.ambientReady)) && cfg.ambient) {
       cfg.ambient(Math.min(dt, 0.05));
     }
     if (ctx) {
@@ -519,7 +543,8 @@ export function createShell(cfg) {
     if (cfg.init) cfg.init(shell);
     cfg.reset(shell.mode); // so the start screen has a live backdrop
     setState('ready');
-    showPanel('start', instructionsHTML('START GAME', false));
+    if (cfg.customStart) { if (cfg.onReady) cfg.onReady(shell); }
+    else showPanel('start', instructionsHTML('START GAME', false));
     requestAnimationFrame(frame);
   });
   window.addEventListener('pageshow', (e) => { if (e.persisted) shell.refreshBest(); });

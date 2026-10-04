@@ -9,5 +9,8 @@
     "test:browser": "node tests/e2e-games.mjs && node tests/e2e-console.mjs && node tests/e2e-auth.mjs",
     "test": "npm run test:fast && npm run test:browser"
   },
-  "devDependencies": { "playwright": "^1.56.0" }
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  },
+  "type": "module"
 }

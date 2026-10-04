@@ -18,6 +18,7 @@
 //  glamStudio    won, done, timeLeft, bonusDone, colorTheme
 //  driftCircuit  track, ms, lapMs, drift, megaDrifts, cleanLap, boosts, medal, clean
 //  dungeonPocket rooms, kills, boss, noHitRoom, upgrades
+//  pocketTag     matches, humans, players, mode, map, diff, win, rank, tags, tagged, escape, held, thaws, pickups, score, finalSurvivor
 const A = (id, game, name, desc, icon, check) => ({ id, game, name, desc, icon, check });
 
 export const ARCADE_ID = 'arcade';
@@ -30,6 +31,18 @@ export const ACHIEVEMENTS = [
   A('level_10', ARCADE_ID, 'High Score Hunter', 'Reach arcade level 10.', '🎯', (f, x) => x.level >= 10),
   A('dedicated', ARCADE_ID, 'Dedicated', 'Play on 10 different visits.', '📅', (f, x) => x.p.stats.sessions >= 10),
   A('collector', ARCADE_ID, 'Collector', 'Unlock 20 achievements.', '🏆', (f, x) => Object.keys(x.p.achievements).length >= 20),
+
+  // ---- Pocket Tag
+  A('pt_first', 'pocketTag', 'You’re It!', 'Play your first Pocket Tag match.', '🏃', (f) => f.matches >= 1),
+  A('pt_cant', 'pocketTag', 'Can’t Catch Me', 'Stay safe for 45 seconds in a match with 4 or more players.', '💨', (f) => f.escape >= 45 && f.players >= 4),
+  A('pt_master', 'pocketTag', 'Tag Master', 'Tag 100 players in total.', '🏷️', (f, x) => (x.c.tags || 0) >= 100),
+  A('pt_last', 'pocketTag', 'Last One Standing', 'Win Infection as the final survivor.', '🧟', (f) => !!f.finalSurvivor),
+  A('pt_party', 'pocketTag', 'Party Time', 'Complete a match with 3 or more human players.', '🎉', (f) => f.humans >= 3),
+  A('pt_thaw', 'pocketTag', 'Thaw Squad', 'Thaw 5 frozen teammates in total.', '🔥', (f, x) => (x.c.thaws || 0) >= 5),
+  A('pt_crown', 'pocketTag', 'Crown Jewel', 'Hold the crown for 60 seconds in one match.', '👑', (f) => f.mode === 'crown' && f.held >= 60),
+  A('pt_power', 'pocketTag', 'Power-Up Pro', 'Collect 4 power-ups in one match.', '⚡', (f) => f.pickups >= 4),
+  A('pt_tour', 'pocketTag', 'World Tour', 'Play a match on all four maps.', '🗺️', (f, x) => ['playground', 'rooftop', 'mall', 'waterpark'].every((m) => (x.c['map_' + m] || 0) > 0)),
+  A('pt_hard', 'pocketTag', 'Hard Mode Hero', 'Win a match against Hard bots.', '🤖', (f) => f.win && f.diff === 'hard' && f.humans === 1),
 
   // ---- Grapple Rush
   A('gr_first', 'grappleRush', 'Rooftop Rookie', 'Cross the finish line.', '🏁', (f) => f.won),
@@ -117,7 +130,7 @@ export const ACHIEVEMENTS = [
   A('dp_slayer', 'dungeonPocket', 'Monster Masher', 'Defeat 200 monsters in total.', '⚔️', (f, x) => (x.c.kills || 0) >= 200),
 ];
 
-export const ALL_GAMES = ['grappleRush', 'neonDodge', 'turboSnake', 'brickBlast', 'asteroidDash', 'dreamBoutique', 'sweetheartCafe', 'glamStudio', 'driftCircuit', 'dungeonPocket'];
+export const ALL_GAMES = ['pocketTag', 'grappleRush', 'neonDodge', 'turboSnake', 'brickBlast', 'asteroidDash', 'dreamBoutique', 'sweetheartCafe', 'glamStudio', 'driftCircuit', 'dungeonPocket'];
 export const byId = (id) => ACHIEVEMENTS.find((a) => a.id === id) || null;
 export const forGame = (gid) => ACHIEVEMENTS.filter((a) => a.game === gid);
 

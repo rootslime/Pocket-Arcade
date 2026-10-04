@@ -15,10 +15,23 @@
 //  theme       { accent, background } used for the selected-game presentation
 export const CATEGORIES = [
   { id: 'all', label: 'All' }, { id: 'action', label: 'Action' }, { id: 'arcade', label: 'Arcade' },
-  { id: 'racing', label: 'Racing' }, { id: 'cozy', label: 'Cozy' }, { id: 'creative', label: 'Creative' }, { id: 'classic', label: 'Classic' },
+  { id: 'racing', label: 'Racing' }, { id: 'cozy', label: 'Cozy' }, { id: 'creative', label: 'Creative' }, { id: 'classic', label: 'Classic' }, { id: 'multiplayer', label: 'Multiplayer' },
 ];
 
 export const GAMES = [
+  {
+    id: 'pocketTag', slug: 'pocket-tag', title: 'Pocket Tag', tagline: 'Run. Chase. Don’t get tagged.',
+    description: 'The playground classic, turbocharged: sprint, slide, vault and dash through four maps in Classic Tag, Freeze Tag, Infection and Crown Chase. Play with bots, on one screen or online with friends.',
+    genre: ['Action', 'Multiplayer'], categories: ['action', 'arcade', 'multiplayer'], path: 'games/pocket-tag/', icon: 'assets/icons/pocket-tag.svg', featured: true,
+    goal: 'Run, chase and avoid being tagged. Each mode has its own way to win.', tips: ['Sprint and dash cost stamina and cooldown, so use them to cut corners.', 'Slide under tunnels, vault benches and use ramps to jump across gaps.', 'After a tag you are protected for a moment. Run!'],
+    scoreType: 'score', scoreField: 'highScore',
+    multiplayer: { supported: true, minPlayers: 2, maxPlayers: 8, bots: true, local: true, online: true, players: '2–8 players', modes: ['Classic Tag', 'Freeze Tag', 'Infection', 'Crown Chase'] },
+    records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Longest Escape (s)', field: 'longestEscape', fmt: 'num' }],
+    stats: { solo: [['Matches vs bots', 'matches'], ['Wins', 'wins'], ['Tags', 'tags']], multi: [['Multiplayer matches', 'mpMatches'], ['Multiplayer wins', 'mpWins'], ['Tags with friends', 'mpTags']] },
+    controls: { keyboard: true, touch: true, gamepad: true },
+    controlsText: ['WASD / Arrows — Run', 'Shift — Sprint · Space — Jump', 'C — Slide · F — Dash', 'Touch: drag to run, buttons on the right'],
+    theme: { accent: '#ffb347', background: 'radial-gradient(900px 500px at 60% 25%, #0f6a4a88, transparent), linear-gradient(160deg, #2a1458, #0c3b3a)' },
+  },
   {
     id: 'grappleRush', slug: 'grapple-rush', title: 'Grapple Rush', tagline: 'Swing. Launch. Race.',
     description: 'Swing across neon rooftops and chase the fastest time. Release at the right moment to fling yourself across the gap.',
@@ -129,6 +142,17 @@ export const GAMES = [
     controlsText: ['WASD — Move', 'Mouse / Arrows — Aim', 'Click / Space — Attack · Shift — Dash'],
     theme: { accent: '#ffb347', background: 'radial-gradient(800px 500px at 50% 30%, #8b5cff30, transparent), linear-gradient(160deg, #130d2a, #261444)' },
   },
+];
+
+/** Home screen shelves. `ids` are explicit lists; `filter` selects by metadata; `continue` is built from recent play. */
+export const SHELVES = [
+  { id: 'featured', title: 'Featured', ids: ['pocketTag'] },
+  { id: 'continue', title: 'Continue playing' },
+  { id: 'friends', title: 'Play with friends', filter: (g) => g.multiplayer && g.multiplayer.supported },
+  { id: 'cozy', title: 'Cozy & creative', ids: ['dreamBoutique', 'sweetheartCafe', 'glamStudio'] },
+  { id: 'quick', title: 'Quick games', ids: ['turboSnake', 'brickBlast', 'neonDodge'] },
+  { id: 'action', title: 'Action', ids: ['grappleRush', 'asteroidDash', 'dungeonPocket'] },
+  { id: 'racing', title: 'Racing', ids: ['driftCircuit'] },
 ];
 
 // ---- helpers shared by the console UI and the profile screen
