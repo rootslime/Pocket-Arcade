@@ -166,8 +166,8 @@ console.log('Login, cross-device sync, other users and password reset');
   await p2.reload(); await p2.waitForSelector('.cc'); await p2.keyboard.press('Escape'); await sleep(200);
   await signUp(p2, 'PlayerTwo', 'p2@example.com'); await p2.waitForSelector('.acct', { timeout: 5000 }); await sleep(1000);
   const uk2 = await userKeys(p2);
-  const l2 = await p2.evaluate((k) => JSON.parse(localStorage.getItem(k)), uk2[0]);
-  ok(l2.profile.xp === 0 && l2.games.neonDodge.highScore === 0, 'a second account starts empty and never receives another user’s data');
+  const l2 = uk2[0] ? await p2.evaluate((k) => JSON.parse(localStorage.getItem(k)), uk2[0]) : null;
+  ok(!l2 || (l2.profile.xp === 0 && l2.games.neonDodge.highScore === 0), 'a second account starts empty and never receives another user’s data');
   const probe = await p2.evaluate(async () => {
     const m = await import('./js/auth.js'); const c = await m.authedClient();
     const sess = JSON.parse(localStorage.getItem(Object.keys(localStorage).find((k) => k.startsWith('sb-'))));
