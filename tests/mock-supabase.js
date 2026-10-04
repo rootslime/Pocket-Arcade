@@ -4,7 +4,7 @@
 const DBKEY = 'mock.sb.db';
 const load = () => { try { return JSON.parse(localStorage.getItem(DBKEY)) || { users: [], rows: { player_data: {}, profiles: {} }, emails: [] }; } catch (e) { return { users: [], rows: { player_data: {}, profiles: {} }, emails: [] }; } };
 const saveDb = (db) => localStorage.setItem(DBKEY, JSON.stringify(db));
-const uid = () => 'u' + Math.random().toString(16).slice(2).padEnd(30, '0').slice(0, 30) + '-0000-4000-8000-000000000000';
+const uid = () => Math.random().toString(16).slice(2).padEnd(32, '0').slice(0, 32) + '-0000-4000-8000-000000000000';
 
 export function createClient(url, key) {
   const ref = new URL(url).hostname.split('.')[0];
