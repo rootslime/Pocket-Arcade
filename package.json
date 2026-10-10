@@ -5,8 +5,8 @@
   "description": "Pocket Arcade: ten browser games, console UI, optional Supabase accounts. Static site, no build step.",
   "scripts": {
     "start": "python3 -m http.server 8000",
-    "test:fast": "node tests/levels-check.mjs && node tests/grapple-bot.mjs && node tests/drift-bot.mjs && node tests/boutique-score.mjs",
-    "test:browser": "node tests/e2e-games.mjs && node tests/e2e-console.mjs && node tests/e2e-auth.mjs",
+    "test:fast": "node tests/levels-check.mjs && node tests/grapple-bot.mjs && node tests/drift-bot.mjs && node tests/boutique-score.mjs && node tests/block-engine.mjs",
+    "test:browser": "node tests/e2e-games.mjs && node tests/e2e-blockblast.mjs && node tests/e2e-console.mjs && node tests/e2e-auth.mjs",
     "test": "npm run test:fast && npm run test:browser"
   },
   "devDependencies": {

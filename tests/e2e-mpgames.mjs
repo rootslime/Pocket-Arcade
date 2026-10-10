@@ -39,11 +39,13 @@ if (run('dodge')) {
   const inMatch = (p) => p.evaluate(() => !!(window.__ndmp && window.__ndmp.MP.on && window.__dodge));
   ok(await until(() => Promise.all([inMatch(A), inMatch(B)]).then((r) => r[0] && r[1]), 9000), 'both players enter the match');
   ok(await until(() => A.evaluate(() => window.__ndmp.MP.cd < 2.5 && window.__ndmp.MP.cd > 0), 4000), 'a synchronised countdown runs first');
+  // idle players would be hit by random hazards and make this test flaky: keep both alive until A is knocked out on purpose
+  for (const p of [A, B]) await p.evaluate(() => { window.__keepAlive = true; setInterval(() => { if (!window.__keepAlive || !window.__dodge) return; const S = window.__dodge.S; S.fx.shield = 9999; S.p.inv = 9999; }, 30); });
   await until(() => Promise.all([A, B].map((p) => p.evaluate(() => window.__dodge.S.t > 9))).then((r) => r[0] && r[1]), 25000);
   const [sa, sb] = await Promise.all([A, B].map((p) => p.evaluate(() => window.__dodge.S.seq.slice(0, 3))));
   ok(sa.length >= 2 && sa.join() === sb.join(), 'both players face the identical hazard sequence (same seed)', JSON.stringify([sa, sb]));
   ok((await A.locator('.mp-peers').count()) === 1 && /Mia/.test(await A.textContent('.mp-peers')), 'an opponents panel shows who is still alive');
-  await A.evaluate(() => { const S = window.__dodge.S; S.fx.shield = 0; S.p.inv = 0; window.__dodge.die({}); });
+  await A.evaluate(() => { window.__keepAlive = false; const S = window.__dodge.S; S.fx.shield = 0; S.p.inv = 0; window.__dodge.die({}); });
   ok(await until(() => B.evaluate(() => [...window.__ndmp.MP.peers.values()].some((p) => !p.alive)), 4000), 'a knock-out is announced to the other player');
   ok(await until(() => B.locator('.mp-standings').count().then((n) => n === 1), 8000), 'the last player alive wins immediately: results appear');
   { const t = await B.textContent('#g-panel'); ok(/🥇[\s\S]*Mia/.test(t) && /1st of 2/.test(t), 'the survivor is ranked 1st', t.replace(/\s+/g, ' ').slice(0, 300)); }
@@ -181,6 +183,65 @@ if (run('coop')) {
   ok(/TEAM RESULT/i.test(txt) && /Individual scores/.test(txt) && /Your team reached wave 1/.test(txt), 'team result with individual scores', txt.replace(/\s+/g, ' ').slice(0, 160));
   const sv = await page.evaluate(() => JSON.parse(localStorage.getItem('pocketArcade.v1')));
   ok(sv.profile.stats.perGame.asteroidDash.counters.coopMatches === 1, 'the co-op game is counted in the profile stats');
+  await browser.close();
+}
+
+
+if (run('duel')) {
+  const { browser, ctx } = await launch({ viewport: { width: 520, height: 900 } });
+  const plain = await ctx.newPage(); watch(plain, errors);
+  console.log('Pocket Block Blast — Block Duel');
+  await plain.goto(HOME + '#/game/pocket-block-blast'); await plain.waitForSelector('.detail');
+  ok((await plain.locator('.mp-box').count()) === 0, 'without a realtime service Block Blast shows no multiplayer buttons (nothing fake)');
+  await plain.goto(HOME + 'games/pocket-block-blast/'); await plain.waitForSelector('[data-act="start"]');
+  ok(true, 'the normal single-player page is unchanged (start screen)');
+  await plain.close();
+  const ctx2 = await browser.newContext({ viewport: { width: 520, height: 900 } });
+  await installMock(ctx2);
+  const A = await newPlayer(ctx2, 'Alex', 'aaaaaaaa1', errors), B = await newPlayer(ctx2, 'Mia', 'bbbbbbbb2', errors);
+  const U = HOME + 'games/pocket-block-blast/';
+  // the 2-player room: a third player cannot join
+  await startRoom(A, B, U);
+  const inMatch = (p) => p.evaluate(() => !!(window.__pbb && window.__pbb.MP.on && window.__pbb.MP.kind === 'online'));
+  ok(await until(() => Promise.all([inMatch(A), inMatch(B)]).then((r) => r[0] && r[1]), 9000), 'both players enter the duel');
+  ok(await until(() => A.evaluate(() => window.__pbb.MP.cd > 0 && window.__pbb.MP.cd < 3.3), 4000), 'a synchronised countdown runs first');
+  await until(() => Promise.all([A, B].map((p) => p.evaluate(() => window.__pbb.MP.cd <= 0))).then((r) => r[0] && r[1]), 9000);
+  const first = (p) => p.evaluate(() => window.__pbb.game.tray.map((t) => t.shape.id).join());
+  const [fa, fb] = await Promise.all([first(A), first(B)]);
+  ok(fa === fb, 'both players get the identical first set of pieces', fa + ' vs ' + fb);
+  ok((await A.locator('.mp-peers').count()) === 1 && /Mia/.test(await A.textContent('.mp-peers')), 'an opponents panel shows the other player’s score');
+  ok(await A.evaluate(() => window.__pbb.game.undosLeft === 0 && window.__pbb.game.setLimit === 8), 'a duel is 8 sets with no undo');
+  // each player plays their own board: A plays greedily, B plays the "first legal move"
+  const play = (p, strat, maxMoves) => p.evaluate(async ([strat, maxMoves]) => {
+    const E = await import('/pocket-arcade/games/pocket-block-blast/engine.js');
+    const g = window.__pbb.game; let n = 0;
+    while (!g.over && n++ < maxMoves) {
+      let mv = null;
+      if (strat === 'bot') mv = E.botMove(g);
+      else for (let i = 0; i < 3 && !mv; i++) if (g.tray[i]) for (let r = 0; r < 8 && !mv; r++) for (let c = 0; c < 8 && !mv; c++) if (g.canPlace(i, r, c)) mv = [i, r, c];
+      if (!mv) break; window.__pbb.commit(mv[0], mv[1], mv[2], false);
+    }
+    return { score: g.score, over: g.over, sets: g.sets };
+  }, [strat, maxMoves]);
+  const ra = await play(A, 'bot', 60);
+  ok(ra.over, `A plays out the whole duel on their own board (${ra.score} points)`);
+  ok(await until(() => B.evaluate(() => window.__pbb.MP.board.others.some((p) => p.done && p.score > 0)), 6000), 'B sees A’s finished score');
+  ok(await until(() => A.locator('.mp-wait').count().then((n) => n === 1) && A.textContent('.mp-wait').then((t) => /waiting for 1 more player/.test(t)), 6000), 'A waits for the other player');
+  ok(await B.evaluate(() => !window.__pbb.game.over && window.__pbb.game.score === 0), 'B’s board is independent: untouched by A’s moves');
+  const rb = await play(B, 'first', 60);
+  ok(await until(() => A.locator('.mp-standings').count().then((n) => n === 1), 9000) && await until(() => B.locator('.mp-standings').count().then((n) => n === 1), 9000), 'both players get the match results');
+  const ta = await A.textContent('#g-panel'), tb = await B.textContent('#g-panel');
+  ok(/MATCH OVER/.test(ta) && /Opponent/.test(ta) && /Final scores/.test(ta), 'results: MATCH OVER, score comparison and final scores', ta.replace(/\s+/g, ' ').slice(0, 220));
+  const aWins = ra.score > rb.score;
+  ok(ra.score !== rb.score ? (aWins ? /You win/.test(ta) && !/You win/.test(tb) : /You win/.test(tb) && !/You win/.test(ta)) : /tie/i.test(ta), `the higher score wins (A ${ra.score} vs B ${rb.score})`);
+  const sv = await A.evaluate(async () => { const st = await import('../../js/storage.js'); return st.getProfile(); });
+  ok(sv.stats.perGame.pocketBlockBlast.counters.pbbMatches === 1, 'the duel is counted in the profile stats');
+  ok((await A.evaluate(async () => { const st = await import('../../js/storage.js'); return st.getGame('pocketBlockBlast').highScore; })) === 0, 'and does not touch the Classic high score');
+  // rematch → back to the room, ready for another game with a fresh seed
+  await B.click('[data-act="pbb-rematch"]');
+  ok(await until(() => B.locator('.lb-code').count(), 6000), 'REMATCH returns to the room');
+  await A.click('[data-act="pbb-lobby"]');
+  ok(await until(() => A.locator('.lb-code').count(), 6000), 'RETURN TO LOBBY returns to the room');
   await browser.close();
 }
 

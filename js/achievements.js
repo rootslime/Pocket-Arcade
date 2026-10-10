@@ -18,6 +18,7 @@
 //  glamStudio    won, done, timeLeft, bonusDone, colorTheme
 //  driftCircuit  track, ms, lapMs, drift, megaDrifts, cleanLap, boosts, medal, clean · race: race, win, players, rank, photo, margin
 //  dungeonPocket rooms, kills, boss, noHitRoom, upgrades
+//  pocketBlockBlast score, lines, maxLines, maxCombo, placed, mode, daily, dailyDone, dailyCount
 //  pocketTag     matches, humans, players, mode, map, diff, win, rank, tags, tagged, escape, held, thaws, pickups, score, finalSurvivor
 const A = (id, game, name, desc, icon, check) => ({ id, game, name, desc, icon, check });
 
@@ -101,6 +102,14 @@ export const ACHIEVEMENTS = [
   A('db_stars', 'dreamBoutique', 'Five Star Style', 'Earn five stars overall on an outfit.', '⭐', (f) => f.stars >= 5),
   A('db_week', 'dreamBoutique', 'Fashion Week', 'Complete a full five-outfit show.', '🎀', (f) => f.outfits >= 5),
   A('db_closet', 'dreamBoutique', 'Growing Closet', 'Unlock 10 wardrobe items.', '🧥', (f) => (f.unlocked || 0) >= 10),
+  // ---- Pocket Block Blast
+  A('pbb_first', 'pocketBlockBlast', 'First Blast', 'Clear your first line.', '💥', (f) => f.lines >= 1),
+  A('pbb_double', 'pocketBlockBlast', 'Double Trouble', 'Clear two lines at the same time.', '✌️', (f) => f.maxLines >= 2),
+  A('pbb_combo', 'pocketBlockBlast', 'Combo Master', 'Reach a ×5 combo.', '🔥', (f) => f.maxCombo >= 5),
+  A('pbb_10k', 'pocketBlockBlast', 'Puzzle Genius', 'Reach 10,000 points.', '🧠', (f) => f.score >= 10000),
+  A('pbb_50k', 'pocketBlockBlast', 'Block Legend', 'Reach 50,000 points.', '🏛️', (f) => f.score >= 50000),
+  A('pbb_daily', 'pocketBlockBlast', 'Daily Player', 'Complete seven different daily challenges.', '📅', (f) => f.dailyCount >= 7),
+
   A('db_color', 'dreamBoutique', 'Color Coordinator', 'Earn five color stars three times.', '🎨', (f, x) => (x.c.colorFive || 0) >= 3),
   A('db_trend', 'dreamBoutique', 'Trendsetter', 'Win 10 styling challenges.', '📸', (f) => (f.totalWins || 0) >= 10),
 
@@ -141,7 +150,7 @@ export const ACHIEVEMENTS = [
   A('dp_slayer', 'dungeonPocket', 'Monster Masher', 'Defeat 200 monsters in total.', '⚔️', (f, x) => (x.c.kills || 0) >= 200),
 ];
 
-export const ALL_GAMES = ['pocketTag', 'grappleRush', 'neonDodge', 'turboSnake', 'brickBlast', 'asteroidDash', 'dreamBoutique', 'sweetheartCafe', 'glamStudio', 'driftCircuit', 'dungeonPocket'];
+export const ALL_GAMES = ['pocketTag', 'pocketBlockBlast', 'grappleRush', 'neonDodge', 'turboSnake', 'brickBlast', 'asteroidDash', 'dreamBoutique', 'sweetheartCafe', 'glamStudio', 'driftCircuit', 'dungeonPocket'];
 export const byId = (id) => ACHIEVEMENTS.find((a) => a.id === id) || null;
 export const forGame = (gid) => ACHIEVEMENTS.filter((a) => a.game === gid);
 

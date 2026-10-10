@@ -1,0 +1,11 @@
+/* Pocket Block Blast — small additions to the shared game shell */
+.pbb-confetti { position: relative; height: 0; overflow: visible; pointer-events: none; }
+.pbb-confetti i { position: absolute; top: -8px; width: 9px; height: 13px; border-radius: 2px; opacity: 0; animation: pbb-fall 2.4s ease-out forwards; }
+@keyframes pbb-fall {
+  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+  100% { transform: translate(var(--dx), 280px) rotate(var(--rot)); opacity: 0; }
+}
+.p-btns .g-btn[data-act^="pbb-"] { flex: 1 1 auto; }
+.pbb-daily { margin: 6px 0 0; font-weight: 800; letter-spacing: .06em; }
+.pbb-daily.ok { color: #5dff8f; }
+@media (prefers-reduced-motion: reduce) { .pbb-confetti i { animation: none; opacity: 0; } }

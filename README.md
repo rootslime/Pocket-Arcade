@@ -1,12 +1,12 @@
 # Pocket Arcade
 
-**Eleven games. One pocket-sized arcade.** A neon console-style arcade built with plain HTML, CSS and ES-module JavaScript (Canvas, DOM and Web Audio). It runs as a **static site on GitHub Pages**: no build step, no server of your own. Players can **play instantly as a guest**, or create a free account (Supabase Auth) to get cloud saves, cross-device XP, achievements and a profile. **Pocket Tag** adds bots, same-screen play and optional **online rooms** (Supabase Realtime).
+**Twelve games. One pocket-sized arcade.** A neon console-style arcade built with plain HTML, CSS and ES-module JavaScript (Canvas, DOM and Web Audio). It runs as a **static site on GitHub Pages**: no build step, no server of your own. Players can **play instantly as a guest**, or create a free account (Supabase Auth) to get cloud saves, cross-device XP, achievements and a profile. **Pocket Tag** adds bots, same-screen play and optional **online rooms** (Supabase Realtime).
 
 * Console-style launcher: horizontal game library, game detail screens, dashboard, library filters, achievements, profile and settings
 * Keyboard, mouse, touch **and gamepad** navigation and controls
-* Arcade-wide XP / level, 92 achievements, cosmetic rewards (titles, avatars, borders, themes)
+* Arcade-wide XP / level, 98 achievements, cosmetic rewards (titles, avatars, borders, themes)
 * Multiplayer screen: Quick Play, Create / Join Room (5-letter codes), Local Play and Play with Bots, driven by each game's `multiplayer` config
-* Guest mode is complete: all eleven games, local saves, local achievements, bots and local multiplayer. Accounts only add sync; online play needs a realtime service (see *Multiplayer setup*)
+* Guest mode is complete: all twelve games, local saves, local achievements, bots and local multiplayer. Accounts only add sync; online play needs a realtime service (see *Multiplayer setup*)
 
 ## Games
 
@@ -16,6 +16,7 @@
 | **Grapple Rush** | Action | Best time per level | Eight handcrafted rooftop courses (Neon Heights, Sunset Strip, Cloud Piercer, Spring Loaded, Chain Reaction, Midnight Drop, Pinball Alley, Neon Gauntlet) with their own skies, bounce pads, gold/silver/bronze medal times and a NEXT LEVEL flow. Hold to grapple, release at the right moment to keep your speed. |
 | **Asteroid Dash** | Action / Arcade | High score, best wave | Momentum-based space shooter: splitting asteroids, saucers, telegraphed comets, upgrades. |
 | **Dungeon Pocket** | Action | High score, deepest room | Twin-stick dungeon survival. Readable enemy telegraphs (slimes, bats, imps, golems), a mini-boss every 5 rooms, 14 stackable upgrades (3 to choose from every two rooms). |
+| **Pocket Block Blast** | Puzzle / Casual | High score per mode | Place three pieces at a time on an 8×8 board, clear full rows and columns, chain combos. Drag and drop (with an offset preview for fingers), tap-to-place, keyboard or controller; undo ×3. **Classic**, **Time Attack** (3 min) and a **Daily Challenge** that needs no server. **Block Duel**: online 1v1 on identical pieces. |
 | **Neon Dodge** | Arcade | High score | Endless survival with authored hazard patterns, near-miss streaks, dash and four power-ups. |
 | **Brick Blast** | Arcade | High score, highest level | Breakout with six levels, four brick types, angle-controlled paddle and power-ups. |
 | **Turbo Snake** | Classic | High score per mode | Classic and Turbo (power-ups, bonus food) Snake with buffered input and swipe / D-pad. |
@@ -41,7 +42,7 @@ js/
   session.js          cheap peek at the persisted session (picks the local save namespace)
   storage.js          localStorage saves (guest + per-account cache), merge logic, sanitising
   progression.js      XP, levels, rewards, anti-exploit rules, run recording
-  achievements.js     all 92 achievement definitions + evaluation
+  achievements.js     all 98 achievement definitions + evaluation
   multiplayer.js      public identity, display-name hygiene, realtime link (reconnects), interpolation
   rooms.js            room codes, presence-based membership, ready, host handover, public matchmaking
   lobby.js            reusable lobby UI (menu, setup, room) for any multiplayer game
@@ -52,6 +53,7 @@ js/
   audio.js input.js fx.js toast.js ui.js util.js colors.js
 games/<slug>/         index.html + game.js (+ data/sim/level modules, style.css for DOM games)
 games/pocket-tag/     sim.js (rules + physics, pure) · bots.js · maps.js · net.js · render.js · game.js
+games/pocket-block-blast/  engine.js (pure rules, daily seed, piece generator) · game.js (canvas UI, Block Duel)
 supabase/schema.sql   database tables + Row Level Security
 tests/                automated checks (see "Testing")
 ```
@@ -256,7 +258,7 @@ The Multiplayer screen, library and detail pages then show exactly the buttons t
 
 * **XP** comes from finishing runs (time played, first time in a game, personal bests, victories, game milestones and achievements). Runs under 20 s earn nothing, so start-and-quit does not farm XP.
 * **Arcade level**: level *n* needs `100 + 50 × (n − 1)` XP. Levels unlock cosmetic titles (Rookie → Pocket Legend), avatars, profile borders and console themes. Cosmetics never change gameplay.
-* **92 achievements** (6 arcade-wide + 5-10 per game, including Pocket Tag’s *You’re It!*, *Can’t Catch Me*, *Tag Master*, *Last One Standing* and *Party Time*). Unlocks show an animated toast and are listed with dates under *Achievements* and on each game's detail screen.
+* **98 achievements** (6 arcade-wide + 5-10 per game, including Pocket Tag’s *You’re It!*, *Can’t Catch Me*, *Tag Master*, *Last One Standing* and *Party Time*). Unlocks show an animated toast and are listed with dates under *Achievements* and on each game's detail screen.
 
 ## Controls and controller support
 
@@ -270,6 +272,24 @@ Every game supports keyboard, touch and (where it makes sense) a gamepad; the cr
 4. Add achievements to `js/achievements.js` (and default save fields in `js/storage.js` for typed defaults).
 5. Test under a sub-path: `node tests/serve.mjs` serves the repo at `/pocket-arcade/`.
 
+## Pocket Block Blast
+
+An original block-placement puzzle (no assets, code or sounds from any other game). Files: `games/pocket-block-blast/` — `engine.js` (pure rules, tested headless), `game.js` (canvas rendering, input, effects), `index.html`, `style.css`.
+
+* **Rules** — three pieces per set on an 8×8 board; a full row or column clears. A game ends only when *none* of the remaining pieces fits anywhere (one stuck piece never ends it). Pieces: dot, lines of 2–5, 2×2, 2×3, 3×3, corners, L, big L, T, Z/S and plus, in all rotations.
+* **Scoring** — each placed cell is 1 point; clearing *n* lines with one piece scores `50·n·(n+1)` (100, 300, 600, 1,000 …) × the combo. The combo counts back-to-back placements that clear something and resets on a placement that clears nothing. Emptying the board adds 2,000.
+* **Fair pieces** — Classic and Time Attack look at the board: they re-roll sets in which nothing fits, and (88% of the time) sets that cannot be placed one after another. Bigger shapes get more common as your score climbs. It is not guaranteed that you can survive forever.
+* **Modes** — Classic (endless), Time Attack (3:00, own high score) and Daily Challenge. Each keeps its own record.
+* **Undo** — three per game, restores the board, score, combo, pieces and the random state exactly. Not available in Block Duel.
+* **Controls** — drag (the piece floats above your finger and a translucent preview shows where it lands: green outline = fits, red dashed with ✕ = blocked, so colour is never the only cue); or tap a piece then tap the board; or `1 2 3` + arrows + Enter, `Z` undo; D-pad / A / RB on a controller. Portrait and landscape layouts; the board has `touch-action: none` so dragging never scrolls the page.
+* **Daily Challenge algorithm** (needs no backend; the same day gives the same puzzle on every device):
+  1. `key` = the UTC date `YYYY-MM-DD`.
+  2. `seed` = FNV-1a (32-bit) of `pocket-block-blast:v1:<key>` (the `v1` is the challenge version; bump it to change every puzzle).
+  3. The starting board (10–13 blocks, never a complete line) comes from `mulberry32(seed)`; set *k* comes from `mulberry32(seed ^ fnv("set"+k))`, so the ten sets (30 pieces) never depend on how you play.
+  4. *Curation:* a built-in greedy bot plays the day. If it gets stuck or scores under 1,200 the next deterministic attempt (`…#1`, `…#2`, …) is used, so no day starts unwinnable. The goal is 80% of the bot's score (1,200–3,000).
+  5. Completion is stored per date in your save (`blobs.pocketBlockBlast`), so *Daily Player* (7 different days) works offline and syncs with your account.
+* **Block Duel (online 1v1)** — needs the realtime service (see *Multiplayer setup*); the button simply does not exist without it. The host picks a seed; both players receive the same 8 sets, play on their own boards, and see each other's score. Highest score after the 8 sets (or 5 minutes) wins; there is a rematch button. It reuses the Brick Battle plumbing, so a disconnect is handled like any other room.
+
 ## Testing
 
 ```bash
@@ -278,11 +298,13 @@ node tests/grapple-bot.mjs       # Grapple Rush: every rooftop link of all 8 lev
 node tests/drift-bot.mjs         # Drift Circuit: bot completes every track; drifting scores
 node tests/boutique-score.mjs    # Dream Boutique scoring is deterministic and reachable
 node tests/tag-sim.mjs           # Pocket Tag: maps connected, all modes × maps with bots, rules, movement, bot limits
-node tests/e2e-games.mjs         # all games in a real browser (Playwright + Chromium)
+node tests/e2e-games.mjs         # the single-player games in a real browser (Playwright + Chromium)
+node tests/block-engine.mjs      # Pocket Block Blast rules: placement, clears, scoring, combos, game over, undo, daily seed, fairness
+node tests/e2e-blockblast.mjs    # Pocket Block Blast in the browser: mouse, touch, tap-to-place, keyboard, modes, saves, daily
 node tests/e2e-multiplayer.mjs   # Pocket Tag + multiplayer: bots, local, rooms, sync, host handover, reconnects, validation
 node tests/battle-sim.mjs        # Snake Battle rules + bots (headless)
 node tests/e2e-battle.mjs        # Snake Battle in the browser: bots, local, online, host handover
-node tests/e2e-mpgames.mjs       # Neon Dodge Last Standing, Brick Battle, Drift race, Asteroid co-op (ONLY=dodge|brick|drift|coop to run one)
+node tests/e2e-mpgames.mjs       # Neon Dodge Last Standing, Brick Battle, Drift race, Asteroid co-op, Block Duel (ONLY=dodge|brick|drift|coop|duel to run one)
 node tests/e2e-console.mjs       # console UI, navigation, gamepad, guest progression
 node tests/e2e-auth.mjs          # accounts, sync, migration, password reset (mock Supabase)
 ```

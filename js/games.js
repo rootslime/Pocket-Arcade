@@ -4,7 +4,7 @@
 //  id          key used in the save file (camelCase) – also the shell `id` the game passes to createShell
 //  slug        folder name / URL fragment
 //  title, tagline, description
-//  genre       display labels            categories  filter keys: action arcade racing cozy creative classic
+//  genre       display labels            categories  filter keys: action arcade puzzle racing cozy creative classic
 //  path        folder relative to the site root (must end with "/")
 //  icon        card artwork (relative to the site root)
 //  scoreType   'time' (lower is better) | 'score'
@@ -14,7 +14,7 @@
 //  goal, tips  short copy for the "How to Play" dialog
 //  theme       { accent, background } used for the selected-game presentation
 export const CATEGORIES = [
-  { id: 'all', label: 'All' }, { id: 'action', label: 'Action' }, { id: 'arcade', label: 'Arcade' },
+  { id: 'all', label: 'All' }, { id: 'action', label: 'Action' }, { id: 'arcade', label: 'Arcade' }, { id: 'puzzle', label: 'Puzzle' },
   { id: 'racing', label: 'Racing' }, { id: 'cozy', label: 'Cozy' }, { id: 'creative', label: 'Creative' }, { id: 'classic', label: 'Classic' }, { id: 'multiplayer', label: 'Multiplayer' },
 ];
 
@@ -97,6 +97,18 @@ export const GAMES = [
     theme: { accent: '#8b5cff', background: 'radial-gradient(900px 600px at 50% 40%, #13113a, #03030f)' },
   },
   {
+    id: 'pocketBlockBlast', slug: 'pocket-block-blast', title: 'Pocket Block Blast', tagline: 'Place. Clear. Combo. Repeat.',
+    description: 'A polished block-placement puzzle: drop pieces onto an 8×8 board, clear rows and columns and chain combos. Classic, Time Attack and a new Daily Challenge every day.',
+    genre: ['Puzzle', 'Casual'], categories: ['puzzle', 'arcade'], path: 'games/pocket-block-blast/', icon: 'assets/icons/pocket-block-blast.svg',
+    goal: 'Fit all three pieces, clear full rows and columns, and keep going until nothing fits.', tips: ['Clear lines on back-to-back placements to build the combo multiplier.', 'Leave room for big pieces. You can undo up to three placements per game.', 'The Daily Challenge gives everyone the same board and pieces today.'],
+    scoreType: 'score', scoreField: 'highScore', multiplayer: { supported: true, minPlayers: 2, maxPlayers: 2, bots: false, local: false, online: true, players: '2 players', modes: ['Block Duel'] },
+    stats: { solo: [], multi: [['Block Duels played', 'pbbMatches'], ['Block Duel wins', 'pbbWins']] },
+    records: [{ label: 'Classic', field: 'highScore', fmt: 'num' }, { label: 'Time Attack', field: 'highScoreTime', fmt: 'num' }, { label: 'Daily Best', field: 'highScoreDaily', fmt: 'num' }, { label: 'Highest Combo', field: 'highCombo', fmt: 'num' }, { label: 'Lines Cleared', field: 'totalLines', fmt: 'num' }, { label: 'Blocks Placed', field: 'totalBlocks', fmt: 'num' }, { label: 'Dailies Completed', field: 'dailiesDone', fmt: 'num' }],
+    controls: { keyboard: true, touch: true, gamepad: true },
+    controlsText: ['Drag a piece onto the board', 'Or tap a piece, then tap the board', '1 2 3 / Arrows / Enter — keyboard · Z — undo'],
+    theme: { accent: '#ff6bd6', background: 'radial-gradient(900px 500px at 55% 25%, #ff6bd633, transparent), linear-gradient(160deg, #150a3a, #2a0c4a)' },
+  },
+  {
     id: 'dreamBoutique', slug: 'dream-boutique', title: 'Dream Boutique', tagline: 'Style the moment.',
     description: 'Fashion styling challenges: read the brief, build the outfit and wow the crowd. Win to unlock new looks.',
     genre: ['Creative', 'Fashion'], categories: ['creative', 'cozy'], path: 'games/dream-boutique/', icon: 'assets/icons/dream-boutique.svg',
@@ -159,6 +171,7 @@ export const SHELVES = [
   { id: 'featured', title: 'Featured', ids: ['pocketTag'] },
   { id: 'continue', title: 'Continue playing' },
   { id: 'friends', title: 'Play with friends', filter: (g) => g.multiplayer && g.multiplayer.supported },
+  { id: 'puzzle', title: 'Puzzle', ids: ['pocketBlockBlast'] },
   { id: 'cozy', title: 'Cozy & creative', ids: ['dreamBoutique', 'sweetheartCafe', 'glamStudio'] },
   { id: 'quick', title: 'Quick games', ids: ['turboSnake', 'brickBlast', 'neonDodge'] },
   { id: 'action', title: 'Action', ids: ['grappleRush', 'asteroidDash', 'dungeonPocket'] },

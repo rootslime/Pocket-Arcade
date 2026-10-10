@@ -7,7 +7,7 @@ const BASE = 'http://localhost:8125/pocket-arcade/';
 let pass = 0, fail = 0;
 const ok = (cond, name, extra = '') => { if (cond) { pass++; console.log('  ✓', name); } else { fail++; console.log('  ✗ FAIL:', name, extra); } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const SLUGS = ['pocket-tag', 'grapple-rush', 'neon-dodge', 'turbo-snake', 'brick-blast', 'asteroid-dash', 'dream-boutique', 'sweetheart-cafe', 'glam-studio', 'drift-circuit', 'dungeon-pocket'];
+const SLUGS = ['pocket-tag', 'grapple-rush', 'neon-dodge', 'turbo-snake', 'brick-blast', 'asteroid-dash', 'dream-boutique', 'sweetheart-cafe', 'glam-studio', 'drift-circuit', 'dungeon-pocket', 'pocket-block-blast'];
 
 const { browser, ctx } = await launch({ viewport: { width: 1280, height: 800 } });
 await ctx.addInitScript(() => {
@@ -22,9 +22,9 @@ const view = (p) => p.textContent('#view');
 console.log('Home');
 {
   const page = await open(); await page.waitForSelector('.cc');
-  ok((await page.locator('.cc').count()) === 11, 'eleven games in the carousel (generated from games.js)');
+  ok((await page.locator('.cc').count()) === 12, 'twelve games in the carousel (generated from games.js)');
   const titles = await page.locator('.cc-title').allTextContents();
-  ok(titles.length === 11 && titles.includes('Pocket Tag') && titles.includes('Dungeon Pocket') && titles.includes('Sweetheart Café'), 'all eleven titles present', titles.join());
+  ok(titles.length === 12 && titles.includes('Pocket Block Blast') && titles.includes('Pocket Tag') && titles.includes('Dungeon Pocket') && titles.includes('Sweetheart Café'), 'all twelve titles present', titles.join());
   ok((await page.locator('.hero-title').textContent()).trim().length > 0 && (await page.locator('#hero-play').count()) === 1, 'hero shows the selected game with a PLAY button');
   const before = await page.textContent('.hero-title');
   await page.hover('.cc:nth-child(5)'); await sleep(200);
@@ -47,8 +47,8 @@ console.log('Library, filters and detail');
 {
   const page = await open('#/library'); await page.waitForSelector('.lib');
   const count = async () => page.locator('.lib').count();
-  ok((await count()) === 11, 'library lists all eleven games');
-  const expect = { action: 5, arcade: 5, racing: 1, cozy: 2, creative: 2, classic: 1, multiplayer: 6 };
+  ok((await count()) === 12, 'library lists all twelve games');
+  const expect = { action: 5, arcade: 6, puzzle: 1, racing: 1, cozy: 2, creative: 2, classic: 1, multiplayer: 7 };
   for (const [cat, n] of Object.entries(expect)) { await page.click(`[data-cat=${cat}]`); ok((await count()) === n, `filter ${cat.toUpperCase()} → ${n} games (got ${await count()})`); }
   await page.click('[data-cat=all]');
   ok(/Best time|High score/.test(await view(page)) && /\d+ \/ \d+/.test(await view(page)), 'cards show best score and achievements earned');
@@ -143,7 +143,7 @@ console.log('Guest progression: XP, achievements, stats');
   await page.goto(BASE); await page.waitForSelector('.cc');
   ok(/Neon Dodge/.test(await page.textContent('.dash')) && !/0 \/ 100 XP/.test(await page.textContent('.strip')), 'dashboard shows recently played and XP progress');
   await page.goto(BASE + '#/achievements'); await page.waitForSelector('.ach');
-  ok((await page.locator('.ach').count()) === 92 && (await page.locator('.ach.got').count()) >= 1, '92 achievements listed, unlocked ones highlighted');
+  ok((await page.locator('.ach').count()) === 98 && (await page.locator('.ach.got').count()) >= 1, '98 achievements listed, unlocked ones highlighted');
   ok(/Unlocked/.test(await page.textContent('.ach.got')), 'unlocked achievements show an unlock date');
   await page.goto(BASE + '#/profile'); await page.waitForSelector('.pf-card');
   ok(/Guest/.test(await view(page)) && /Games played/.test(await view(page)) && /Neon Dodge/.test(await view(page)), 'profile shows stats, records and per-game statistics');

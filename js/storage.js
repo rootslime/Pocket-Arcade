@@ -20,6 +20,7 @@ const defaultGames = () => ({
   glamStudio: { highScore: 0, challengesWon: 0 },
   driftCircuit: { bestTime_neon: null, bestTime_sunset: null, bestTime_midnight: null, bestLap: null, driftBest: 0 },
   dungeonPocket: { highScore: 0, highestRoom: 0 },
+  pocketBlockBlast: { highScore: 0, highScoreTime: 0, highScoreDaily: 0, highCombo: 0, totalLines: 0, totalBlocks: 0, dailiesDone: 0 },
   pocketTag: { highScore: 0, longestEscape: 0 },
 });
 
