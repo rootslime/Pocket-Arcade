@@ -4,7 +4,7 @@
 //  id          key used in the save file (camelCase) – also the shell `id` the game passes to createShell
 //  slug        folder name / URL fragment
 //  title, tagline, description
-//  genre       display labels            categories  filter keys: action arcade racing cozy creative classic
+//  genre       display labels            categories  filter keys: action arcade puzzle racing cozy creative classic
 //  path        folder relative to the site root (must end with "/")
 //  icon        card artwork (relative to the site root)
 //  scoreType   'time' (lower is better) | 'score'
@@ -14,20 +14,38 @@
 //  goal, tips  short copy for the "How to Play" dialog
 //  theme       { accent, background } used for the selected-game presentation
 export const CATEGORIES = [
-  { id: 'all', label: 'All' }, { id: 'action', label: 'Action' }, { id: 'arcade', label: 'Arcade' },
-  { id: 'racing', label: 'Racing' }, { id: 'cozy', label: 'Cozy' }, { id: 'creative', label: 'Creative' }, { id: 'classic', label: 'Classic' },
+  { id: 'all', label: 'All' }, { id: 'action', label: 'Action' }, { id: 'arcade', label: 'Arcade' }, { id: 'puzzle', label: 'Puzzle' },
+  { id: 'racing', label: 'Racing' }, { id: 'cozy', label: 'Cozy' }, { id: 'creative', label: 'Creative' }, { id: 'classic', label: 'Classic' }, { id: 'multiplayer', label: 'Multiplayer' },
 ];
 
 export const GAMES = [
   {
+    id: 'pocketTag', slug: 'pocket-tag', title: 'Pocket Tag', tagline: 'Run. Chase. Don’t get tagged.',
+    description: 'The playground classic, turbocharged: sprint, slide, vault and dash through four maps in Classic Tag, Freeze Tag, Infection and Crown Chase. Play with bots, on one screen or online with friends.',
+    genre: ['Action', 'Multiplayer'], categories: ['action', 'arcade', 'multiplayer'], path: 'games/pocket-tag/', icon: 'assets/icons/pocket-tag.svg', featured: true,
+    goal: 'Run, chase and avoid being tagged. Each mode has its own way to win.', tips: ['Sprint and dash cost stamina and cooldown, so use them to cut corners.', 'Slide under tunnels, vault benches and use ramps to jump across gaps.', 'After a tag you are protected for a moment. Run!'],
+    scoreType: 'score', scoreField: 'highScore',
+    multiplayer: { supported: true, minPlayers: 2, maxPlayers: 8, bots: true, local: true, online: true, players: '2–8 players', modes: ['Classic Tag', 'Freeze Tag', 'Infection', 'Crown Chase'] },
+    records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Longest Escape (s)', field: 'longestEscape', fmt: 'num' }],
+    stats: { solo: [['Matches vs bots', 'matches'], ['Wins', 'wins'], ['Tags', 'tags']], multi: [['Multiplayer matches', 'mpMatches'], ['Multiplayer wins', 'mpWins'], ['Tags with friends', 'mpTags']] },
+    controls: { keyboard: true, touch: true, gamepad: true },
+    controlsText: ['WASD / Arrows — Run', 'Shift — Sprint · Space — Jump', 'C — Slide · F — Dash', 'Touch: drag to run, buttons on the right'],
+    theme: { accent: '#ffb347', background: 'radial-gradient(900px 500px at 60% 25%, #0f6a4a88, transparent), linear-gradient(160deg, #2a1458, #0c3b3a)' },
+  },
+  {
     id: 'grappleRush', slug: 'grapple-rush', title: 'Grapple Rush', tagline: 'Swing. Launch. Race.',
-    description: 'Swing across neon rooftops and chase the fastest time. Release at the right moment to fling yourself across the gap.',
+    description: 'Eight rooftop courses with swings, bounce pads and medal times. Release at the right moment to fling yourself across the gap.',
     genre: ['Action', 'Platformer'], categories: ['action'], path: 'games/grapple-rush/', icon: 'assets/icons/grapple-rush.svg',
     goal: "Cross the rooftops and reach the finish gate as fast as you can.", tips: ["Hold grapple near a glowing node, release at the top of the swing to keep your speed.", "Falling sends you back to your last checkpoint \u2014 the clock keeps running."],
     scoreType: 'time', scoreField: 'bestTime', multiplayer: false,
-    records: [{ label: 'Best Time', field: 'bestTime', fmt: 'time' }],
+    records: [
+      { label: 'Neon Heights', field: 'bestTime', fmt: 'time' }, { label: 'Sunset Strip', field: 'bestTime_sunset', fmt: 'time' },
+      { label: 'Cloud Piercer', field: 'bestTime_cloud', fmt: 'time' }, { label: 'Spring Loaded', field: 'bestTime_spring', fmt: 'time' },
+      { label: 'Chain Reaction', field: 'bestTime_chain', fmt: 'time' }, { label: 'Midnight Drop', field: 'bestTime_midnight', fmt: 'time' },
+      { label: 'Pinball Alley', field: 'bestTime_pinball', fmt: 'time' }, { label: 'Neon Gauntlet', field: 'bestTime_gauntlet', fmt: 'time' },
+    ],
     controls: { keyboard: true, touch: true, gamepad: true },
-    controlsText: ['A / D — Run', 'Space — Jump', 'E / Click — Hold to grapple'],
+    controlsText: ['A / D — Run', 'Space — Jump', 'E / Click — Hold to grapple', '8 levels — pick one on the start screen'],
     theme: { accent: '#2de2e6', background: 'radial-gradient(900px 500px at 70% 20%, #7a1e6c55, transparent), linear-gradient(160deg, #0b0627, #2b0c55)' },
   },
   {
@@ -35,7 +53,8 @@ export const GAMES = [
     description: 'Survive an arena of lasers, walls and homing mines. Graze hazards for bonus points and grab power-ups.',
     genre: ['Arcade', 'Survival'], categories: ['arcade'], path: 'games/neon-dodge/', icon: 'assets/icons/neon-dodge.svg',
     goal: "Survive as long as you can and build a score multiplier.", tips: ["Skim hazards for CLOSE! bonuses and bigger multipliers.", "Dash gives brief invulnerability \u2014 use it to blink through lasers."],
-    scoreType: 'score', scoreField: 'highScore', multiplayer: false,
+    scoreType: 'score', scoreField: 'highScore', multiplayer: { supported: true, minPlayers: 2, maxPlayers: 6, bots: false, local: false, online: true, players: '2–6 players', modes: ['Last Player Standing'] },
+    stats: { solo: [], multi: [['Last Standing matches', 'lsMatches'], ['Last Standing wins', 'lsWins']] },
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }],
     controls: { keyboard: true, touch: true, gamepad: true },
     controlsText: ['WASD / Arrows — Move', 'Space / Shift — Dash'],
@@ -46,10 +65,11 @@ export const GAMES = [
     description: 'The classic you know, plus a Turbo mode with power-ups, bonus food and ghost mode.',
     genre: ['Classic', 'Arcade'], categories: ['classic', 'arcade'], path: 'games/turbo-snake/', icon: 'assets/icons/turbo-snake.svg',
     goal: "Eat food to grow without hitting walls or yourself.", tips: ["Turbo mode adds bonus food and power-ups.", "Quick turns are buffered so you never reverse into yourself."],
-    scoreType: 'score', scoreField: 'highScore', multiplayer: false,
+    scoreType: 'score', scoreField: 'highScore', multiplayer: { supported: true, minPlayers: 2, maxPlayers: 4, bots: true, local: true, online: true, page: 'battle.html', players: '2–4 players', modes: ['Snake Battle'] },
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Classic', field: 'classicHigh', fmt: 'num' }, { label: 'Turbo', field: 'turboHigh', fmt: 'num' }],
     controls: { keyboard: true, touch: true, gamepad: true },
-    controlsText: ['Arrows / WASD — Steer', 'Swipe or D-pad on touch'],
+    stats: { solo: [['Snake Battles played', 'battles'], ['Snake Battle wins', 'battleWins']], multi: [['Multiplayer battles', 'mpBattles'], ['Multiplayer wins', 'mpBattleWins']] },
+    controlsText: ['Arrows / WASD — Steer', 'Swipe or D-pad on touch', 'Snake Battle: 2–4 snakes, last one alive wins'],
     theme: { accent: '#5dff8f', background: 'radial-gradient(800px 500px at 60% 30%, #5dff8f26, transparent), linear-gradient(160deg, #052a1d, #0b1038)' },
   },
   {
@@ -57,7 +77,8 @@ export const GAMES = [
     description: 'Smash through six handcrafted levels. Aim with your paddle, catch power-ups and keep the ball alive.',
     genre: ['Arcade', 'Breakout'], categories: ['arcade'], path: 'games/brick-blast/', icon: 'assets/icons/brick-blast.svg',
     goal: "Break every brick across six levels without losing your last ball.", tips: ["Hit the ball with the paddle edge to steer it.", "Catch falling capsules for wide paddle, multi-ball and more."],
-    scoreType: 'score', scoreField: 'highScore', multiplayer: false,
+    scoreType: 'score', scoreField: 'highScore', multiplayer: { supported: true, minPlayers: 2, maxPlayers: 4, bots: false, local: true, online: true, players: '2–4 players', modes: ['Brick Battle'] },
+    stats: { solo: [], multi: [['Brick Battles played', 'bbMatches'], ['Brick Battle wins', 'bbWins']] },
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Highest Level', field: 'highestLevel', fmt: 'num', min: 2 }],
     controls: { keyboard: true, touch: true, gamepad: true },
     controlsText: ['← → / Mouse — Paddle', 'Space / Click — Launch'],
@@ -68,11 +89,24 @@ export const GAMES = [
     description: 'Blast rocks, dodge saucers and survive endless waves with momentum-based flying and upgrades.',
     genre: ['Action', 'Space Shooter'], categories: ['action', 'arcade'], path: 'games/asteroid-dash/', icon: 'assets/icons/asteroid-dash.svg',
     goal: "Survive wave after wave of asteroids, saucers and comets.", tips: ["You keep drifting after you stop thrusting \u2014 plan your turns.", "Chain kills for bonus points and grab upgrades."],
-    scoreType: 'score', scoreField: 'highScore', multiplayer: false,
+    scoreType: 'score', scoreField: 'highScore', multiplayer: { supported: true, minPlayers: 2, maxPlayers: 4, bots: false, local: true, online: false, page: 'coop.html', players: '2–4 players', modes: ['Co-op (same screen)'] },
+    stats: { solo: [], multi: [['Co-op games', 'coopMatches'], ['Co-op waves survived', 'coopWaves']] },
     records: [{ label: 'High Score', field: 'highScore', fmt: 'num' }, { label: 'Highest Wave', field: 'highestWave', fmt: 'num', min: 2 }],
     controls: { keyboard: true, touch: true, gamepad: true },
     controlsText: ['← → — Rotate', '↑ — Thrust', 'Space — Shoot'],
     theme: { accent: '#8b5cff', background: 'radial-gradient(900px 600px at 50% 40%, #13113a, #03030f)' },
+  },
+  {
+    id: 'pocketBlockBlast', slug: 'pocket-block-blast', title: 'Pocket Block Blast', tagline: 'Place. Clear. Combo. Repeat.',
+    description: 'A polished block-placement puzzle: drop pieces onto an 8×8 board, clear rows and columns and chain combos. Classic, Time Attack and a new Daily Challenge every day.',
+    genre: ['Puzzle', 'Casual'], categories: ['puzzle', 'arcade'], path: 'games/pocket-block-blast/', icon: 'assets/icons/pocket-block-blast.svg',
+    goal: 'Fit all three pieces, clear full rows and columns, and keep going until nothing fits.', tips: ['Clear lines on back-to-back placements to build the combo multiplier.', 'Leave room for big pieces. You can undo up to three placements per game.', 'The Daily Challenge gives everyone the same board and pieces today.'],
+    scoreType: 'score', scoreField: 'highScore', multiplayer: { supported: true, minPlayers: 2, maxPlayers: 2, bots: false, local: false, online: true, players: '2 players', modes: ['Block Duel'] },
+    stats: { solo: [], multi: [['Block Duels played', 'pbbMatches'], ['Block Duel wins', 'pbbWins']] },
+    records: [{ label: 'Classic', field: 'highScore', fmt: 'num' }, { label: 'Time Attack', field: 'highScoreTime', fmt: 'num' }, { label: 'Daily Best', field: 'highScoreDaily', fmt: 'num' }, { label: 'Highest Combo', field: 'highCombo', fmt: 'num' }, { label: 'Lines Cleared', field: 'totalLines', fmt: 'num' }, { label: 'Blocks Placed', field: 'totalBlocks', fmt: 'num' }, { label: 'Dailies Completed', field: 'dailiesDone', fmt: 'num' }],
+    controls: { keyboard: true, touch: true, gamepad: true },
+    controlsText: ['Drag a piece onto the board', 'Or tap a piece, then tap the board', '1 2 3 / Arrows / Enter — keyboard · Z — undo'],
+    theme: { accent: '#ff6bd6', background: 'radial-gradient(900px 500px at 55% 25%, #ff6bd633, transparent), linear-gradient(160deg, #150a3a, #2a0c4a)' },
   },
   {
     id: 'dreamBoutique', slug: 'dream-boutique', title: 'Dream Boutique', tagline: 'Style the moment.',
@@ -112,7 +146,8 @@ export const GAMES = [
     description: 'Top-down arcade racing: master the drift, charge your boost and chase gold on three tracks.',
     genre: ['Racing', 'Arcade'], categories: ['racing', 'action'], path: 'games/drift-circuit/', icon: 'assets/icons/drift-circuit.svg',
     goal: "Finish three laps as quickly as possible. Chase the gold time.", tips: ["Hold the handbrake while turning to drift and charge your boost.", "Dirt shortcuts are faster in a straight line but grip is lower."],
-    scoreType: 'time', scoreField: 'bestLap', multiplayer: false,
+    scoreType: 'time', scoreField: 'bestLap', multiplayer: { supported: true, minPlayers: 2, maxPlayers: 6, bots: false, local: false, online: true, players: '2–6 players', modes: ['Multiplayer Race'] },
+    stats: { solo: [], multi: [['Multiplayer races', 'mpRaces'], ['Race wins', 'raceWins']] },
     records: [{ label: 'Best Lap', field: 'bestLap', fmt: 'time' }, { label: 'Neon City', field: 'bestTime_neon', fmt: 'time' }, { label: 'Sunset Coast', field: 'bestTime_sunset', fmt: 'time' }, { label: 'Midnight Circuit', field: 'bestTime_midnight', fmt: 'time' }, { label: 'Best Drift Score', field: 'driftBest', fmt: 'num' }],
     controls: { keyboard: true, touch: true, gamepad: true },
     controlsText: ['W / S — Gas / Brake', 'A / D — Steer', 'Space — Drift · Shift — Boost'],
@@ -131,8 +166,23 @@ export const GAMES = [
   },
 ];
 
+/** Home screen shelves. `ids` are explicit lists; `filter` selects by metadata; `continue` is built from recent play. */
+export const SHELVES = [
+  { id: 'featured', title: 'Featured', ids: ['pocketTag'] },
+  { id: 'continue', title: 'Continue playing' },
+  { id: 'friends', title: 'Play with friends', filter: (g) => g.multiplayer && g.multiplayer.supported },
+  { id: 'puzzle', title: 'Puzzle', ids: ['pocketBlockBlast'] },
+  { id: 'cozy', title: 'Cozy & creative', ids: ['dreamBoutique', 'sweetheartCafe', 'glamStudio'] },
+  { id: 'quick', title: 'Quick games', ids: ['turboSnake', 'brickBlast', 'neonDodge'] },
+  { id: 'action', title: 'Action', ids: ['grappleRush', 'asteroidDash', 'dungeonPocket'] },
+  { id: 'racing', title: 'Racing', ids: ['driftCircuit'] },
+];
+
 // ---- helpers shared by the console UI and the profile screen
 import { formatTime, formatScore } from './util.js';
+
+// every game that declares multiplayer is also listed under the Multiplayer filter
+for (const g of GAMES) if (g.multiplayer && g.multiplayer.supported && !g.categories.includes('multiplayer')) g.categories.push('multiplayer');
 
 export const gameById = (id) => GAMES.find((g) => g.id === id) || null;
 export const gameBySlug = (slug) => GAMES.find((g) => g.slug === slug) || null;

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-label="Pocket Block Blast artwork">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a0a4f"/><stop offset="1" stop-color="#150a3a"/></linearGradient>
+<linearGradient id="r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff9aae"/><stop offset=".5" stop-color="#ff4d6d"/><stop offset="1" stop-color="#b3213f"/></linearGradient>
+<linearGradient id="y" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe98a"/><stop offset=".5" stop-color="#ffd60a"/><stop offset="1" stop-color="#b89500"/></linearGradient>
+<linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8ff4f7"/><stop offset=".5" stop-color="#2de2e6"/><stop offset="1" stop-color="#139ba0"/></linearGradient>
+<linearGradient id="p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d0aaff"/><stop offset=".5" stop-color="#a56bff"/><stop offset="1" stop-color="#6a38c9"/></linearGradient>
+<linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9af2b5"/><stop offset=".5" stop-color="#43e07a"/><stop offset="1" stop-color="#24a152"/></linearGradient>
+<filter id="b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+</defs>
+<rect width="240" height="150" fill="url(#bg)"/>
+<rect x="38" y="12" width="164" height="126" rx="14" fill="#0d0830" stroke="#ff6bd6" stroke-width="2.5"/>
+<g>
+<rect x="50" y="24" width="26" height="26" rx="6" fill="url(#r)"/><rect x="78" y="24" width="26" height="26" rx="6" fill="url(#r)"/><rect x="106" y="24" width="26" height="26" rx="6" fill="url(#r)"/>
+<rect x="50" y="52" width="26" height="26" rx="6" fill="url(#y)"/><rect x="78" y="52" width="26" height="26" rx="6" fill="url(#c)"/>
+<rect x="50" y="80" width="26" height="26" rx="6" fill="url(#y)"/><rect x="78" y="80" width="26" height="26" rx="6" fill="url(#c)"/><rect x="106" y="80" width="26" height="26" rx="6" fill="url(#c)"/>
+<rect x="50" y="108" width="26" height="22" rx="6" fill="url(#p)"/><rect x="78" y="108" width="26" height="22" rx="6" fill="url(#p)"/>
+</g>
+<g opacity=".95"><rect x="150" y="24" width="26" height="26" rx="6" fill="url(#g)"/><rect x="150" y="52" width="26" height="26" rx="6" fill="url(#g)"/><rect x="150" y="80" width="26" height="26" rx="6" fill="url(#g)"/></g>
+<rect x="106" y="52" width="26" height="26" rx="6" fill="#ffffff" opacity=".35" filter="url(#b)"/>
+<path d="M154 116l8 8 14-18" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".0"/>
+</svg>

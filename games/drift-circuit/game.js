@@ -4,6 +4,15 @@ import { Particles, Popups, Shake } from '../../js/fx.js';
 import { clamp, damp, formatTime, formatScore, TAU, roundRectPath } from '../../js/util.js';
 import { TRACK_DEFS, buildTrack, nearest } from './tracks.js';
 import { Race, CAR } from './sim.js';
+import { createMpKit, standingsHTML, rankText, PeerBoard } from '../../js/mp-kit.js';
+import { Track, Ticker, num, int } from '../../js/multiplayer.js';
+import { esc } from '../../js/ui.js';
+
+// ---- Multiplayer race: everyone drives their own car on the same track; positions are streamed 10×/s and the other
+// cars are drawn interpolated (no collisions between cars). Finish times decide the result.
+const MPQ = new URLSearchParams(location.search).has('mp');
+const MP = { on: false, kit: null, room: null, board: null, info: null, tracks: new Map(), prog: new Map(), keyToIdx: new Map(), names: new Map(), myIdx: 0, tick: new Ticker(10), seq: 0, lastSeq: new Map(), ended: false, doneAt: 0, offs: [] };
+const GHOST_COLORS = ['#2de2e6', '#ff3cac', '#5dff8f', '#ffe14d', '#c78bff', '#4d9bff'];
 
 const ID = 'driftCircuit';
 const tracks = TRACK_DEFS.map((d) => buildTrack(d));
@@ -27,7 +36,7 @@ const shell = createShell({
   size: (aspect) => { const w = clamp(520 * aspect, 640, 1000); return { w, h: w / aspect }; },
   modeLabel: 'Choose a track',
   modes: TRACK_DEFS.map((d, i) => ({ id: d.id, label: d.name, desc: ['Wide city streets', 'Flowing coast road', 'Tight night circuit'][i] })),
-  hud: [{ id: 'lap', label: 'LAP', init: '1/3' }, { id: 'time', label: 'TIME', init: '0:00.00' }, { id: 'drift', label: 'DRIFT', init: '0' }],
+  hud: [{ id: 'lap', label: 'LAP', init: '1/3' }, { id: 'time', label: 'TIME', init: '0:00.00' }, { id: 'drift', label: 'DRIFT', init: '0' }, ...(MPQ ? [{ id: 'pos', label: 'POS', init: '1st' }] : [])],
   best: { field: (m) => `bestTime_${m || 'neon'}`, kind: 'low', format: formatTime, label: 'BEST' },
   gamepad: { left: ['dpadLeft'], right: ['dpadRight'], gas: ['rt', 'a', 'dpadUp'], brake: ['lt', 'b', 'dpadDown'], hand: ['x', 'rb'], boost: ['y', 'lb'] },
   keys: {
@@ -61,6 +70,7 @@ const shell = createShell({
   update,
   ambient(dt) { fx.update(dt); pops.update(dt); shake.update(dt); },
   render,
+  ...(MPQ ? { customStart: true, onReady: mpReady, livePause: () => MP.on, pauseHTML: mpPauseHTML, onAct: mpAct } : {}),
 });
 
 function setTrack(id) {
@@ -103,7 +113,7 @@ function readInput() {
 }
 
 function update(dt) {
-  const inp = readInput();
+  const inp = MP.on && shell.liveMenu ? { steer: 0, gas: 0, brake: 0, hand: false, boost: false } : readInput();
   race.step(dt, inp);
   const c = race.car;
   for (const ev of race.events) handle(ev);
@@ -133,6 +143,7 @@ function update(dt) {
   shell.hud('lap', `${Math.min(race.lap, track.lap)}/${track.lap}`);
   shell.hud('time', formatTime(race.raceMs));
   shell.hud('drift', formatScore(race.driftTotal));
+  if (MP.on) mpUpdate(dt);
 }
 
 function say(text, t = 1.6) { banner = text; bannerT = t; }
@@ -160,18 +171,18 @@ function handle(ev) {
       say(`LAP ${ev.n} · ${formatTime(ev.ms)}${ev.best ? ' · BEST!' : ''}`, 2);
       if (ev.clean) shell.facts({ cleanLap: true });
       break;
-    case 'finish': finish(); break;
+    case 'finish': if (MP.on) mpDone(); else finish(); break;
     default: break;
   }
 }
 
-function finish() {
+function finish(extra = {}) {
   const T = track.def;
   const ms = race.raceMs;
   const medal = ms <= T.medals.gold ? 'gold' : ms <= T.medals.silver ? 'silver' : ms <= T.medals.bronze ? 'bronze' : null;
   const names = { gold: 'Gold Medal!', silver: 'Silver Medal!', bronze: 'Bronze Medal!' };
   const icon = { gold: '🥇', silver: '🥈', bronze: '🥉' };
-  shell.finish({
+  const r = {
     win: !!medal, title: medal ? names[medal] : 'Race Complete', subtitle: `${T.name}${medal ? ' ' + icon[medal] : ''}`,
     score: ms, scoreText: formatTime(ms),
     extras: { driftBest: race.driftTotal }, extrasLow: { bestLap: race.bestLapMs },
@@ -180,7 +191,8 @@ function finish() {
     milestones: [['Medal', medal === 'gold' ? 50 : medal === 'silver' ? 35 : medal === 'bronze' ? 20 : 0], ['Drift score', Math.min(40, Math.floor(race.driftTotal / 500) * 5)], ['Clean laps', Math.min(20, race.cleanLaps * 10)]],
     summary: `${T.name} ${formatTime(ms)}`,
     stats: [['Best lap', formatTime(race.bestLapMs)], ['Drift score', formatScore(race.driftTotal)], ['Mega drifts', String(race.megaDrifts)], ['Wall hits', String(race.wallHits)], ['Gold time', formatTime(T.medals.gold)], ['Boosts used', String(race.boostUses)]],
-  });
+  };
+  shell.finish({ ...r, ...extra, facts: { ...r.facts, ...(extra.facts || {}) }, counters: { ...r.counters, ...(extra.counters || {}) }, milestones: [...r.milestones, ...(extra.milestones || [])] });
 }
 
 // ---------------------------------------------------------------- rendering
@@ -277,6 +289,7 @@ function render(ctx, W, H) {
     ctx.restore();
   }
   fx.draw(ctx);
+  if (MP.on) drawGhosts(ctx, glow);
   drawCar(ctx, glow);
   pops.draw(ctx);
   ctx.restore();
@@ -332,6 +345,7 @@ function drawHud(ctx, W, H) {
     ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2.5; ctx.beginPath();
     track.pts.forEach((p, i) => { const x = ox + (p.x - mini.x0) * s, y = oy + (p.y - mini.y0) * s; if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
     ctx.closePath(); ctx.stroke();
+    if (MP.on) for (const g of ghostList()) { ctx.fillStyle = g.color; ctx.beginPath(); ctx.arc(ox + (g.x - mini.x0) * s, oy + (g.y - mini.y0) * s, 3, 0, TAU); ctx.fill(); }
     ctx.fillStyle = '#ff8a3d'; ctx.beginPath(); ctx.arc(ox + (race.car.x - mini.x0) * s, oy + (race.car.y - mini.y0) * s, 4, 0, TAU); ctx.fill();
   }
   // countdown / banners
@@ -346,4 +360,170 @@ function drawHud(ctx, W, H) {
   ctx.textAlign = 'left';
 }
 
-window.__drift = { get race() { return race; }, shell, tracks };
+window.__drift = { get race() { return race; }, shell, tracks, MP, forceFinish(ms) { race.time = ms / 1000; race.state = 'finished'; race.finished = true; handle({ type: 'finish', ms }); } };
+
+
+// ================================================================ Multiplayer race
+const MP_SCHEMA = [{ key: 'track', label: 'Track', type: 'select', options: TRACK_DEFS.map((d) => ({ v: d.id, label: d.name })) }];
+const MP_CFG = { supported: true, minPlayers: 2, maxPlayers: 6, bots: false, local: false, online: true };
+let waitEl = null;
+
+function mpReady(sh) {
+  MP.kit = createMpKit({
+    shell: sh, game: { id: ID, title: 'Drift Circuit', accent: '#ff8a3d', mp: MP_CFG, players: '2–6 players · first across the line wins' },
+    schema: MP_SCHEMA, defaults: { track: 'neon' }, localMax: 0, settingsKey: 'dc.cfg',
+    hostExtra: () => ({ t0: Date.now() }),
+    onStart: mpStart,
+  });
+  MP.kit.start();
+  window.__dcmp = { MP, get kit() { return MP.kit; } };
+}
+
+function mpStart(info) {
+  mpCleanup();
+  MP.on = true; MP.info = info; MP.room = info.room; MP.ended = false; MP.doneAt = 0; MP.seq = 0;
+  MP.kit.clearNotice();
+  const roster = info.roster.slice(0, 6);
+  MP.board = new PeerBoard(info.room, roster, { stage: shell.stage, higher: false, fmt: (p) => (p.done ? formatTime(p.score) : '…') });
+  MP.keyToIdx = MP.board.keyToIdx; MP.myIdx = MP.board.myIdx;
+  MP.tracks = new Map(); MP.prog = new Map(); MP.lastSeq = new Map();
+  roster.forEach((m, i) => { MP.names.set(i, String(m.name)); if (i !== MP.myIdx) MP.tracks.set(i, new Track(130)); });
+  MP.offs = [
+    MP.kit.wire(info.room, { onClosed: () => { if (MP.on) mpLeave(); } }),
+    info.room.onMsg('car', (d, from) => {
+      const i = MP.keyToIdx.get(from.key);
+      if (i === undefined || i === MP.myIdx || !Array.isArray(d) || d.length < 6) return;
+      const seq = int(d[0], 0, 1e9, -1);
+      if (seq <= (MP.lastSeq.get(i) ?? -1)) return;
+      MP.lastSeq.set(i, seq);
+      const a = num(d[3], -10, 10), v = num(d[4], 0, 1200);
+      MP.tracks.get(i).push({ x: num(d[1], -1e5, 1e5), y: num(d[2], -1e5, 1e5), a, vx: Math.cos(a) * v, vy: Math.sin(a) * v });
+      MP.prog.set(i, num(d[5], -1e6, 1e6));
+    }),
+  ];
+  MP.kit.setStatus('game');
+  shell.mode = info.settings.track;
+  shell.restart();
+}
+
+function ghostList() {
+  const out = [];
+  for (const [i, t] of MP.tracks) {
+    const g = t.at();
+    if (!g) continue;
+    const sp = Math.hypot(g.vx, g.vy);
+    out.push({ i, x: g.x, y: g.y, a: sp > 25 ? Math.atan2(g.vy, g.vx) : g.a, color: GHOST_COLORS[i % GHOST_COLORS.length], name: MP.names.get(i) || '' });
+  }
+  return out;
+}
+
+function drawGhosts(ctx, glow) {
+  for (const g of ghostList()) {
+    ctx.save(); ctx.translate(g.x, g.y); ctx.rotate(g.a);
+    if (glow) { ctx.shadowColor = g.color; ctx.shadowBlur = 12; }
+    ctx.fillStyle = g.color; roundRectPath(ctx, -20, -11, 40, 22, 7); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; roundRectPath(ctx, -6, -8, 15, 16, 4); ctx.fill();
+    ctx.fillStyle = '#ffe14d'; ctx.fillRect(15, -9, 4, 5); ctx.fillRect(15, 4, 4, 5);
+    ctx.restore();
+    ctx.font = '800 12px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const label = g.name.slice(0, 10), w = ctx.measureText(label).width + 10;
+    ctx.fillStyle = 'rgba(8,9,30,.75)'; roundRectPath(ctx, g.x - w / 2, g.y - 34, w, 16, 8); ctx.fill();
+    ctx.fillStyle = g.color; ctx.fillText(label, g.x, g.y - 26);
+  }
+}
+
+/** Current place (1-based) among everyone, using finish times first and race progress otherwise. */
+function myPlace() {
+  const board = MP.board;
+  const rows = [...board.peers.entries()].map(([i, p]) => ({ i, me: i === MP.myIdx, done: p.done, ms: p.score, prog: i === MP.myIdx ? race.progress : (MP.prog.get(i) ?? -1e9) }));
+  rows.sort((a, b) => (b.done - a.done) || (a.done && b.done ? a.ms - b.ms : b.prog - a.prog));
+  return { rows, place: rows.findIndex((r) => r.me) + 1 };
+}
+
+function mpUpdate(dt) {
+  const board = MP.board;
+  if (MP.tick.tick(dt) && !race.finished) {
+    const c = race.car;
+    MP.room.send('car', [MP.seq++, Math.round(c.x), Math.round(c.y), Math.round(c.a * 100) / 100, Math.round(Math.hypot(c.vx, c.vy)), Math.round(race.progress * 10) / 10, race.boosting ? 1 : 0]);
+  }
+  board.update(dt, { done: race.finished, score: race.finished ? Math.round(race.time * 1000) : 0, aux: { p: Math.round(race.progress) } });
+  board.ui(dt);
+  const { place } = myPlace();
+  shell.hud('pos', `${rankText(place)}/${board.peers.size}`);
+  if (race.finished && !MP.ended) {
+    if (!MP.doneAt) MP.doneAt = performance.now();
+    const left = board.others.filter((p) => !p.done).length;
+    if (waitEl) waitEl.textContent = `You finished! Waiting for ${left} more driver${left === 1 ? '' : 's'}…`;
+    if (board.allOthersDone || performance.now() - MP.doneAt > 45000) mpFinish();
+  }
+}
+
+function mpDone() {
+  say('FINISHED!', 3);
+  if (!waitEl) { waitEl = document.createElement('div'); waitEl.className = 'mp-wait'; shell.stage.appendChild(waitEl); }
+}
+
+function mpFinish() {
+  if (MP.ended) return;
+  MP.ended = true;
+  MP.board.update(0, { done: true, score: Math.round(race.time * 1000), aux: {} });
+  if (waitEl) { waitEl.remove(); waitEl = null; }
+  const { rows } = myPlace();
+  const rank = rows.findIndex((r) => r.me) + 1, n = rows.length;
+  const win = rank === 1;
+  const second = rows[1];
+  const myMs = Math.round(race.time * 1000);
+  const margin = win && second && second.done ? second.ms - myMs : null;
+  const photo = win && margin !== null && margin >= 0 && margin < 300;
+  const list = rows.map((r) => ({ name: MP.board.peers.get(r.i).name, text: r.done ? formatTime(r.ms) : 'DNF', me: r.me, note: r.done && r.i !== rows[0].i && rows[0].done ? `+${((r.ms - rows[0].ms) / 1000).toFixed(2)}s` : '' }));
+  finish({
+    win, title: win ? 'You won the race!' : `Race over · ${rankText(rank)}`, subtitle: `${track.def.name} · ${rankText(rank)} of ${n}`,
+    facts: { race: true, win, players: n, rank, photo, margin: margin === null ? 9999 : margin },
+    counters: { mpRaces: 1, raceWins: win ? 1 : 0 },
+    milestones: [...(win ? [['Won the race', 25]] : []), ['Raced with others', 10]],
+    extraHTML: standingsHTML(list, 'Race results'),
+    buttonsHTML: '<button type="button" class="g-btn primary big" data-act="dc-again">PLAY AGAIN</button><button type="button" class="g-btn" data-act="dc-mode">CHANGE TRACK</button><button type="button" class="g-btn" data-act="dc-lobby">RETURN TO LOBBY</button><a class="g-btn" href="../../index.html">ARCADE HOME</a>',
+  });
+  MP.kit.setStatus('lobby');
+}
+
+function mpCleanup() {
+  MP.offs.forEach((f) => { try { f(); } catch (e) { /* ignore */ } }); MP.offs = [];
+  if (MP.board) { MP.board.dispose(); MP.board = null; }
+  if (waitEl) { waitEl.remove(); waitEl = null; }
+}
+
+function mpLeave() {
+  const room = MP.room;
+  MP.on = false; MP.room = null;
+  mpCleanup();
+  if (room && !room.closed) room.leave().catch(() => {});
+  MP.kit.conn(undefined);
+  shell.toReady();
+  MP.kit.setStatus('online');
+  MP.kit.lobby.openMenu();
+}
+
+function mpBackToRoom(ready) {
+  const room = MP.room;
+  MP.on = false;
+  mpCleanup();
+  MP.kit.conn(undefined);
+  shell.toReady();
+  MP.kit.setStatus('lobby');
+  MP.kit.lobby.backToRoom(room, { ready });
+}
+
+function mpAct(act) {
+  if (act === 'dc-again') { mpBackToRoom(true); return true; }
+  if (act === 'dc-mode' || act === 'dc-lobby') { mpBackToRoom(false); return true; }
+  if (act === 'dc-leave') { mpLeave(); return true; }
+  if (act === 'restart') return true;
+  return false;
+}
+
+function mpPauseHTML() {
+  return `<h2 id="g-panel-title">Menu</h2><p class="p-sub">The race keeps going while this menu is open.</p>
+    <div class="p-menu"><button type="button" class="g-btn primary big" data-act="resume">Resume</button><button type="button" class="g-btn" data-act="help">How to play</button>
+    <button type="button" class="g-btn" data-act="mute">${shell.store.isMuted() ? 'Sound: OFF' : 'Sound: ON'}</button><button type="button" class="g-btn" data-act="dc-leave">Leave race</button><a class="g-btn" href="../../index.html">Arcade Home</a></div>`;
+}

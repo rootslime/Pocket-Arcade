@@ -8,16 +8,18 @@
 //   x.level – arcade level
 //
 // FACTS reported by each game
-//  grappleRush   won, ms, falls, grapples
-//  neonDodge     secs, score, grazes, streak, picks, dashes
-//  turboSnake    score, length, mode, bonus, ghost
-//  brickBlast    score, level, won, bricks, perfectLevel, combo
-//  asteroidDash  score, wave, saucers, chain, rocks, upgrades
+//  grappleRush   won, ms, falls, grapples, level, medal, pads
+//  neonDodge     secs, score, grazes, streak, picks, dashes · Last Standing: ls, win, players
+//  turboSnake    score, length, mode, bonus, ghost · battle: battle, win, rank, players, humans, len, eaten
+//  brickBlast    score, level, won, bricks, perfectLevel, combo · Brick Battle: battle, win, players
+//  asteroidDash  score, wave, saucers, chain, rocks, upgrades · Co-op: coop, wave, players
 //  dreamBoutique outfits, perfect, bestTheme, runScore, stars, colorStars, wins
 //  sweetheartCafe shift, served, perfectShift, bestCombo, tips, shiftsDone, won
 //  glamStudio    won, done, timeLeft, bonusDone, colorTheme
-//  driftCircuit  track, ms, lapMs, drift, megaDrifts, cleanLap, boosts, medal, clean
+//  driftCircuit  track, ms, lapMs, drift, megaDrifts, cleanLap, boosts, medal, clean · race: race, win, players, rank, photo, margin
 //  dungeonPocket rooms, kills, boss, noHitRoom, upgrades
+//  pocketBlockBlast score, lines, maxLines, maxCombo, placed, mode, daily, dailyDone, dailyCount
+//  pocketTag     matches, humans, players, mode, map, diff, win, rank, tags, tagged, escape, held, thaws, pickups, score, finalSurvivor
 const A = (id, game, name, desc, icon, check) => ({ id, game, name, desc, icon, check });
 
 export const ARCADE_ID = 'arcade';
@@ -31,12 +33,28 @@ export const ACHIEVEMENTS = [
   A('dedicated', ARCADE_ID, 'Dedicated', 'Play on 10 different visits.', '📅', (f, x) => x.p.stats.sessions >= 10),
   A('collector', ARCADE_ID, 'Collector', 'Unlock 20 achievements.', '🏆', (f, x) => Object.keys(x.p.achievements).length >= 20),
 
+  // ---- Pocket Tag
+  A('pt_first', 'pocketTag', 'You’re It!', 'Play your first Pocket Tag match.', '🏃', (f) => f.matches >= 1),
+  A('pt_cant', 'pocketTag', 'Can’t Catch Me', 'Stay safe for 45 seconds in a match with 4 or more players.', '💨', (f) => f.escape >= 45 && f.players >= 4),
+  A('pt_master', 'pocketTag', 'Tag Master', 'Tag 100 players in total.', '🏷️', (f, x) => (x.c.tags || 0) >= 100),
+  A('pt_last', 'pocketTag', 'Last One Standing', 'Win Infection as the final survivor.', '🧟', (f) => !!f.finalSurvivor),
+  A('pt_party', 'pocketTag', 'Party Time', 'Complete a match with 3 or more human players.', '🎉', (f) => f.humans >= 3),
+  A('pt_thaw', 'pocketTag', 'Thaw Squad', 'Thaw 5 frozen teammates in total.', '🔥', (f, x) => (x.c.thaws || 0) >= 5),
+  A('pt_crown', 'pocketTag', 'Crown Jewel', 'Hold the crown for 60 seconds in one match.', '👑', (f) => f.mode === 'crown' && f.held >= 60),
+  A('pt_power', 'pocketTag', 'Power-Up Pro', 'Collect 4 power-ups in one match.', '⚡', (f) => f.pickups >= 4),
+  A('pt_tour', 'pocketTag', 'World Tour', 'Play a match on all four maps.', '🗺️', (f, x) => ['playground', 'rooftop', 'mall', 'waterpark'].every((m) => (x.c['map_' + m] || 0) > 0)),
+  A('pt_hard', 'pocketTag', 'Hard Mode Hero', 'Win a match against Hard bots.', '🤖', (f) => f.win && f.diff === 'hard' && f.humans === 1),
+
   // ---- Grapple Rush
   A('gr_first', 'grappleRush', 'Rooftop Rookie', 'Cross the finish line.', '🏁', (f) => f.won),
-  A('gr_speed', 'grappleRush', 'Speed Demon', 'Finish in under 1:30.', '⚡', (f) => f.won && f.ms < 90000),
-  A('gr_light', 'grappleRush', 'Lightning Line', 'Finish in under 1:10.', '🌩️', (f) => f.won && f.ms < 70000),
+  A('gr_speed', 'grappleRush', 'Speed Demon', 'Finish Neon Heights in under 1:30.', '⚡', (f) => f.won && f.level === 'heights' && f.ms < 90000),
+  A('gr_light', 'grappleRush', 'Lightning Line', 'Finish Neon Heights in under 1:10.', '🌩️', (f) => f.won && f.level === 'heights' && f.ms < 70000),
   A('gr_flawless', 'grappleRush', 'Sure Footed', 'Finish without falling.', '🦶', (f) => f.won && f.falls === 0),
   A('gr_swing', 'grappleRush', 'Swing Set', 'Grapple 100 times in total.', '🪝', (f, x) => (x.c.grapples || 0) >= 100),
+  A('gr_gold', 'grappleRush', 'Gold Standard', 'Earn a gold medal on any level.', '🥇', (f) => f.won && f.medal === 'gold'),
+  A('gr_tour', 'grappleRush', 'Skyline Tour', 'Finish 4 different levels.', '🌆', (f, x) => Object.keys(x.c).filter((k) => k.startsWith('lv_') && x.c[k] > 0).length >= 4),
+  A('gr_legend', 'grappleRush', 'Rooftop Legend', 'Finish all 8 levels.', '👑', (f, x) => Object.keys(x.c).filter((k) => k.startsWith('lv_') && x.c[k] > 0).length >= 8),
+  A('gr_bounce', 'grappleRush', 'Boing!', 'Bounce on 10 pads in one run.', '🟢', (f) => f.won && f.pads >= 10),
   A('gr_comeback', 'grappleRush', 'Never Give Up', 'Finish after falling at least 5 times.', '💪', (f) => f.won && f.falls >= 5),
 
   // ---- Neon Dodge
@@ -46,6 +64,7 @@ export const ACHIEVEMENTS = [
   A('nd_streak', 'neonDodge', 'Streak Master', 'Reach a graze streak of 15.', '🔗', (f) => f.streak >= 15),
   A('nd_power', 'neonDodge', 'Power Player', 'Collect 5 power-ups in one run.', '🔋', (f) => f.picks >= 5),
   A('nd_score', 'neonDodge', 'High Roller', 'Score 3,000 points.', '💎', (f) => f.score >= 3000),
+  A('nd_standing', 'neonDodge', 'Last One Dodging', 'Win a Last Standing match.', '🏆', (f) => !!f.ls && !!f.win),
 
   // ---- Turbo Snake
   A('ts_first', 'turboSnake', 'First Bite', 'Eat your first food.', '🍎', (f) => f.length >= 4),
@@ -55,6 +74,8 @@ export const ACHIEVEMENTS = [
   A('ts_classic', 'turboSnake', 'Classic Fan', 'Score 300 in Classic mode.', '🎮', (f) => f.mode === 'classic' && f.score >= 300),
   A('ts_ghost', 'turboSnake', 'Ghost Rider', 'Collect a Ghost power-up.', '👻', (f) => (f.ghost || 0) >= 1),
   A('ts_gold', 'turboSnake', 'Golden Snack', 'Eat 3 gold bonus foods in one run.', '⭐', (f) => (f.bonus || 0) >= 3),
+  A('ts_battle', 'turboSnake', 'Last Snake Slithering', 'Win a Snake Battle.', '🏟️', (f) => !!f.battle && !!f.win),
+  A('ts_crowd', 'turboSnake', 'Crowded Arena', 'Finish a Snake Battle with 4 snakes.', '🐍', (f) => !!f.battle && f.players >= 4),
 
   // ---- Brick Blast
   A('bb_first', 'brickBlast', 'First Break', 'Clear level 1.', '🧱', (f) => f.level >= 2 || f.won),
@@ -64,6 +85,7 @@ export const ACHIEVEMENTS = [
   A('bb_demo', 'brickBlast', 'Demolition Crew', 'Destroy 500 bricks in total.', '💥', (f, x) => (x.c.bricks || 0) >= 500),
   A('bb_power', 'brickBlast', 'Power Hungry', 'Catch 10 power-ups in total.', '🍬', (f, x) => (x.c.powerups || 0) >= 10),
   A('bb_win', 'brickBlast', 'Brick Champion', 'Clear all six levels.', '🏆', (f) => f.won),
+  A('bb_duel', 'brickBlast', 'Brick Duelist', 'Win a Brick Battle.', '⚔️', (f) => !!f.battle && !!f.win),
 
   // ---- Asteroid Dash
   A('ad_wave2', 'asteroidDash', 'Lift Off', 'Reach wave 2.', '🛰️', (f) => f.wave >= 2),
@@ -72,6 +94,7 @@ export const ACHIEVEMENTS = [
   A('ad_rocks', 'asteroidDash', 'Rock Smasher', 'Destroy 300 asteroids in total.', '☄️', (f, x) => (x.c.rocks || 0) >= 300),
   A('ad_chain', 'asteroidDash', 'Chain Reaction', 'Reach a kill chain of 8.', '⛓️', (f) => f.chain >= 8),
   A('ad_upgrades', 'asteroidDash', 'Fully Loaded', 'Collect 10 upgrades in total.', '🔧', (f, x) => (x.c.upgrades || 0) >= 10),
+  A('ad_coop', 'asteroidDash', 'Wingmates', 'Reach wave 5 together in Co-op.', '🤝', (f) => !!f.coop && f.wave >= 5 && f.players >= 2),
 
   // ---- Dream Boutique
   A('db_first', 'dreamBoutique', 'First Look', 'Complete your first outfit.', '👗', (f) => f.outfits >= 1),
@@ -79,6 +102,14 @@ export const ACHIEVEMENTS = [
   A('db_stars', 'dreamBoutique', 'Five Star Style', 'Earn five stars overall on an outfit.', '⭐', (f) => f.stars >= 5),
   A('db_week', 'dreamBoutique', 'Fashion Week', 'Complete a full five-outfit show.', '🎀', (f) => f.outfits >= 5),
   A('db_closet', 'dreamBoutique', 'Growing Closet', 'Unlock 10 wardrobe items.', '🧥', (f) => (f.unlocked || 0) >= 10),
+  // ---- Pocket Block Blast
+  A('pbb_first', 'pocketBlockBlast', 'First Blast', 'Clear your first line.', '💥', (f) => f.lines >= 1),
+  A('pbb_double', 'pocketBlockBlast', 'Double Trouble', 'Clear two lines at the same time.', '✌️', (f) => f.maxLines >= 2),
+  A('pbb_combo', 'pocketBlockBlast', 'Combo Master', 'Reach a ×5 combo.', '🔥', (f) => f.maxCombo >= 5),
+  A('pbb_10k', 'pocketBlockBlast', 'Puzzle Genius', 'Reach 10,000 points.', '🧠', (f) => f.score >= 10000),
+  A('pbb_50k', 'pocketBlockBlast', 'Block Legend', 'Reach 50,000 points.', '🏛️', (f) => f.score >= 50000),
+  A('pbb_daily', 'pocketBlockBlast', 'Daily Player', 'Complete seven different daily challenges.', '📅', (f) => f.dailyCount >= 7),
+
   A('db_color', 'dreamBoutique', 'Color Coordinator', 'Earn five color stars three times.', '🎨', (f, x) => (x.c.colorFive || 0) >= 3),
   A('db_trend', 'dreamBoutique', 'Trendsetter', 'Win 10 styling challenges.', '📸', (f) => (f.totalWins || 0) >= 10),
 
@@ -107,6 +138,8 @@ export const ACHIEVEMENTS = [
   A('dc_gold', 'driftCircuit', 'Gold Medal', 'Earn a gold medal on any track.', '🥇', (f) => f.medal === 'gold'),
   A('dc_all', 'driftCircuit', 'Triple Threat', 'Finish all three tracks.', '🏁', (f, x) => ((x.c.t_neon || 0) > 0) && ((x.c.t_sunset || 0) > 0) && ((x.c.t_midnight || 0) > 0)),
   A('dc_boost', 'driftCircuit', 'Boost Junkie', 'Use boost 25 times in total.', '🔋', (f, x) => (x.c.boosts || 0) >= 25),
+  A('dc_victor', 'driftCircuit', 'Race Winner', 'Win a multiplayer race.', '🏁', (f) => !!f.race && !!f.win),
+  A('dc_photo', 'driftCircuit', 'Photo Finish', 'Win a multiplayer race by less than 0.3 seconds.', '📸', (f) => !!f.race && !!f.photo),
 
   // ---- Dungeon Pocket
   A('dp_10', 'dungeonPocket', 'Dungeon Crawler', 'Clear 10 rooms in one run.', '🗝️', (f) => f.rooms >= 10),
@@ -117,7 +150,7 @@ export const ACHIEVEMENTS = [
   A('dp_slayer', 'dungeonPocket', 'Monster Masher', 'Defeat 200 monsters in total.', '⚔️', (f, x) => (x.c.kills || 0) >= 200),
 ];
 
-export const ALL_GAMES = ['grappleRush', 'neonDodge', 'turboSnake', 'brickBlast', 'asteroidDash', 'dreamBoutique', 'sweetheartCafe', 'glamStudio', 'driftCircuit', 'dungeonPocket'];
+export const ALL_GAMES = ['pocketTag', 'pocketBlockBlast', 'grappleRush', 'neonDodge', 'turboSnake', 'brickBlast', 'asteroidDash', 'dreamBoutique', 'sweetheartCafe', 'glamStudio', 'driftCircuit', 'dungeonPocket'];
 export const byId = (id) => ACHIEVEMENTS.find((a) => a.id === id) || null;
 export const forGame = (gid) => ACHIEVEMENTS.filter((a) => a.game === gid);
 
