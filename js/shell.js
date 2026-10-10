@@ -358,6 +358,7 @@ export function createShell(cfg) {
     if (canvas) canvas.focus({ preventScroll: true });
   }
   shell.restart = startRun;
+  shell.showStart = () => { clearTimeout(overTimer); cfg.reset(shell.mode); setState('ready'); showPanel('start', instructionsHTML('START GAME', false)); shell.refreshBest(); };
   shell.toReady = () => { clearTimeout(overTimer); hidePanel(); cfg.reset(shell.mode); setState('ready'); };
   shell.showPanel = showPanel;
   shell.hidePanel = hidePanel;

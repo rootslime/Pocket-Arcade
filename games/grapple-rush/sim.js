@@ -8,7 +8,7 @@ export const PHYS = {
   hw: 9, hh: 15,
   range: 460, aimRadius: 150,
   swingAccel: 950, reelIn: 240, reelOut: 200, ropeMin: 50, ropeSlack: 0.94,
-  releaseBoost: 1.05, maxSpeed: 1150,
+  releaseBoost: 1.05, maxSpeed: 1150, padV: 940,
 };
 
 const sgn = (v) => (v > 0 ? 1 : v < 0 ? -1 : 0);
@@ -49,6 +49,7 @@ export class World {
     this.dead = 0;
     this.falls = 0;
     this.grapples = 0;
+    this.pads = 0;
     this.events.length = 0;
     this.maxSpeed = 0;
   }
@@ -238,6 +239,18 @@ export class World {
         this.moveX(cx); this.moveY(cy);
         const vr = p.vx * nx + p.vy * ny;
         if (vr > 0) { p.vx -= vr * nx; p.vy -= vr * ny; }
+      }
+    }
+
+    // ---- bounce pads ----
+    if (p.onGround && !this.rope && this.level.pads) {
+      for (const pad of this.level.pads) {
+        if (p.x >= pad.x && p.x <= pad.x + pad.w && Math.abs(p.y + PHYS.hh - pad.y) < 3) {
+          p.vy = -PHYS.padV; p.onGround = false; p.jumping = false; p.coyote = 0; p.buffer = 0;
+          this.pads++;
+          this.events.push({ type: 'pad', x: p.x, y: pad.y });
+          break;
+        }
       }
     }
 

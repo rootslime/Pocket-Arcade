@@ -8,7 +8,7 @@
 //   x.level – arcade level
 //
 // FACTS reported by each game
-//  grappleRush   won, ms, falls, grapples
+//  grappleRush   won, ms, falls, grapples, level, medal, pads
 //  neonDodge     secs, score, grazes, streak, picks, dashes · Last Standing: ls, win, players
 //  turboSnake    score, length, mode, bonus, ghost · battle: battle, win, rank, players, humans, len, eaten
 //  brickBlast    score, level, won, bricks, perfectLevel, combo · Brick Battle: battle, win, players
@@ -46,10 +46,14 @@ export const ACHIEVEMENTS = [
 
   // ---- Grapple Rush
   A('gr_first', 'grappleRush', 'Rooftop Rookie', 'Cross the finish line.', '🏁', (f) => f.won),
-  A('gr_speed', 'grappleRush', 'Speed Demon', 'Finish in under 1:30.', '⚡', (f) => f.won && f.ms < 90000),
-  A('gr_light', 'grappleRush', 'Lightning Line', 'Finish in under 1:10.', '🌩️', (f) => f.won && f.ms < 70000),
+  A('gr_speed', 'grappleRush', 'Speed Demon', 'Finish Neon Heights in under 1:30.', '⚡', (f) => f.won && f.level === 'heights' && f.ms < 90000),
+  A('gr_light', 'grappleRush', 'Lightning Line', 'Finish Neon Heights in under 1:10.', '🌩️', (f) => f.won && f.level === 'heights' && f.ms < 70000),
   A('gr_flawless', 'grappleRush', 'Sure Footed', 'Finish without falling.', '🦶', (f) => f.won && f.falls === 0),
   A('gr_swing', 'grappleRush', 'Swing Set', 'Grapple 100 times in total.', '🪝', (f, x) => (x.c.grapples || 0) >= 100),
+  A('gr_gold', 'grappleRush', 'Gold Standard', 'Earn a gold medal on any level.', '🥇', (f) => f.won && f.medal === 'gold'),
+  A('gr_tour', 'grappleRush', 'Skyline Tour', 'Finish 4 different levels.', '🌆', (f, x) => Object.keys(x.c).filter((k) => k.startsWith('lv_') && x.c[k] > 0).length >= 4),
+  A('gr_legend', 'grappleRush', 'Rooftop Legend', 'Finish all 8 levels.', '👑', (f, x) => Object.keys(x.c).filter((k) => k.startsWith('lv_') && x.c[k] > 0).length >= 8),
+  A('gr_bounce', 'grappleRush', 'Boing!', 'Bounce on 10 pads in one run.', '🟢', (f) => f.won && f.pads >= 10),
   A('gr_comeback', 'grappleRush', 'Never Give Up', 'Finish after falling at least 5 times.', '💪', (f) => f.won && f.falls >= 5),
 
   // ---- Neon Dodge

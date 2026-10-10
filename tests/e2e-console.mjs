@@ -143,7 +143,7 @@ console.log('Guest progression: XP, achievements, stats');
   await page.goto(BASE); await page.waitForSelector('.cc');
   ok(/Neon Dodge/.test(await page.textContent('.dash')) && !/0 \/ 100 XP/.test(await page.textContent('.strip')), 'dashboard shows recently played and XP progress');
   await page.goto(BASE + '#/achievements'); await page.waitForSelector('.ach');
-  ok((await page.locator('.ach').count()) === 88 && (await page.locator('.ach.got').count()) >= 1, '88 achievements listed, unlocked ones highlighted');
+  ok((await page.locator('.ach').count()) === 92 && (await page.locator('.ach.got').count()) >= 1, '92 achievements listed, unlocked ones highlighted');
   ok(/Unlocked/.test(await page.textContent('.ach.got')), 'unlocked achievements show an unlock date');
   await page.goto(BASE + '#/profile'); await page.waitForSelector('.pf-card');
   ok(/Guest/.test(await view(page)) && /Games played/.test(await view(page)) && /Neon Dodge/.test(await view(page)), 'profile shows stats, records and per-game statistics');

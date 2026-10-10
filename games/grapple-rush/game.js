@@ -3,10 +3,12 @@ import { createShell } from '../../js/shell.js';
 import { Particles, Popups, Shake } from '../../js/fx.js';
 import { canvasPoint } from '../../js/input.js';
 import { clamp, damp, formatTime, rand, TAU } from '../../js/util.js';
+import * as store from '../../js/storage.js';
 import { World, PHYS } from './sim.js';
-import { LEVEL } from './level.js';
+import { LEVELS, levelById } from './level.js';
 
-const world = new World(LEVEL);
+let lv = LEVELS[0];
+let world = new World(lv);
 const fx = new Particles(260);
 const pops = new Popups(16);
 const shake = new Shake();
@@ -15,6 +17,22 @@ let aim = null, aimActive = false, hovering = false;
 let grappleBuf = 0, flash = 0, flashColor = '#ff3cac', t = 0, sinceStart = 0, lastTarget = null;
 let windowPattern = null;
 const reach = [];
+
+// Each level has its own sky and neon trim.
+const THEMES = {
+  heights: { sky: ['#0b0627', '#2b0c55', '#7a1e6c'], moon: '#ff7ac8', halo: 'rgba(255,60,172,.25)', far: '#1a0f45', near: '#140b38', edge: '#2de2e6' },
+  sunset: { sky: ['#2a0a3a', '#8a2a6a', '#ff8a4d'], moon: '#ffb86b', halo: 'rgba(255,184,107,.28)', far: '#4a1650', near: '#341040', edge: '#ff8ad8' },
+  cloud: { sky: ['#07103a', '#18408a', '#6ec6ff'], moon: '#e8f6ff', halo: 'rgba(200,236,255,.25)', far: '#17316e', near: '#102456', edge: '#9be8ff' },
+  spring: { sky: ['#06201a', '#0d5a4a', '#3fe0a0'], moon: '#c9ffe0', halo: 'rgba(120,255,190,.25)', far: '#0e4a3c', near: '#0a3a30', edge: '#5dff8f' },
+  chain: { sky: ['#1a0630', '#4a0f5a', '#c03a9a'], moon: '#ff9ae0', halo: 'rgba(255,154,224,.25)', far: '#35104a', near: '#260a3a', edge: '#ff3cac' },
+  midnight: { sky: ['#02030f', '#0a0f3a', '#1a2a70'], moon: '#9ab0ff', halo: 'rgba(154,176,255,.22)', far: '#0c1250', near: '#080c3a', edge: '#6c8cff' },
+  pinball: { sky: ['#2a0a1a', '#7a1a4a', '#ffb347'], moon: '#ffd27a', halo: 'rgba(255,210,122,.28)', far: '#4a1236', near: '#340c28', edge: '#ffe14d' },
+  gauntlet: { sky: ['#1a0000', '#5a0a1a', '#ff3c3c'], moon: '#ff6a6a', halo: 'rgba(255,106,106,.25)', far: '#3a0a16', near: '#2a0610', edge: '#ff4d4d' },
+};
+const theme = () => THEMES[lv.id] || THEMES.heights;
+const bestField = (m) => (!m || m === 'heights' ? 'bestTime' : `bestTime_${m}`);
+const medalFor = (L, ms) => (ms <= L.par.gold ? 'gold' : ms <= L.par.silver ? 'silver' : 'bronze');
+const MEDAL_ICON = { gold: '🥇', silver: '🥈', bronze: '🥉' };
 
 const hash = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 
@@ -29,9 +47,24 @@ const shell = createShell({
   },
   hud: [
     { id: 'time', label: 'TIME', init: '0:00.00' },
-    { id: 'cp', label: 'CHECKPOINT', init: `0/${LEVEL.checkpoints.length}` },
+    { id: 'cp', label: 'CHECKPOINT', init: `0/${lv.checkpoints.length}` },
+    { id: 'lvl', label: 'LEVEL', init: `1/${LEVELS.length}` },
   ],
-  best: { field: 'bestTime', kind: 'low', format: formatTime, label: 'BEST' },
+  best: { field: bestField, kind: 'low', format: formatTime, label: 'BEST' },
+  modeLabel: 'Choose a level',
+  modes: LEVELS.map((L, i) => ({
+    id: L.id, label: `${i + 1}. ${L.name}`,
+    get desc() {
+      const b = store.getGame('grappleRush')[bestField(L.id)];
+      const m = b ? ` · ${MEDAL_ICON[medalFor(L, b)]} ${formatTime(b)}` : '';
+      return `${L.difficulty} · ${L.blurb}${m}`;
+    },
+  })),
+  onAct(act) {
+    if (act === 'gr-next') { const i = LEVELS.findIndex((l) => l.id === shell.mode); if (i >= 0 && i < LEVELS.length - 1) { setMode(LEVELS[i + 1].id); shell.restart(); } return true; }
+    if (act === 'gr-levels') { shell.showStart(); return true; }
+    return false;
+  },
   gamepad: { left: ['dpadLeft', 'lsLeft'], right: ['dpadRight', 'lsRight'], jump: ['a', 'dpadUp'], down: ['dpadDown', 'lsDown'], grapple: ['x', 'rt', 'rb', 'lt'] },
   keys: {
     left: ['ArrowLeft', 'KeyA'], right: ['ArrowRight', 'KeyD'],
@@ -83,18 +116,26 @@ const shell = createShell({
     cv.addEventListener('pointerup', up);
     cv.addEventListener('pointercancel', up);
   },
-  reset() {
-    world.reset();
+  reset(mode) {
+    lv = levelById(mode || shell.mode);
+    world = new World(lv);
+    shell.hud('lvl', `${LEVELS.indexOf(lv) + 1}/${LEVELS.length}`);
     fx.clear(); pops.clear(); shake.mag = 0;
     cam.x = world.p.x + 80; cam.y = world.p.y - 30;
     grappleBuf = 0; flash = 0; sinceStart = 0; t = 0; aimActive = false;
     shell.hud('time', formatTime(0));
-    shell.hud('cp', `0/${LEVEL.checkpoints.length}`);
+    shell.hud('cp', `0/${lv.checkpoints.length}`);
   },
   update,
   ambient(dt) { fx.update(dt); pops.update(dt); shake.update(dt); t += dt; },
   render,
 });
+
+function setMode(id) {
+  shell.mode = id;
+  try { store.setSetting('mode.grappleRush', id); } catch (e) { /* ignore */ }
+  shell.refreshBest();
+}
 
 function update(dt) {
   const i = shell.input;
@@ -130,7 +171,7 @@ function update(dt) {
   fx.update(dt); pops.update(dt); shake.update(dt);
   flash = Math.max(0, flash - dt * 2.4);
   shell.hud('time', formatTime(world.ms));
-  shell.hud('cp', `${world.cp}/${LEVEL.checkpoints.length}`);
+  shell.hud('cp', `${world.cp}/${lv.checkpoints.length}`);
 }
 
 function handle(ev, pressedNow) {
@@ -155,10 +196,14 @@ function handle(ev, pressedNow) {
       sfx.play('release');
       if (ev.speed > 650) { pops.add(ev.x, ev.y - 26, 'LAUNCH!', '#ffe14d', 16); shake.kick(2); fx.emit(ev.x, ev.y, 10, { speed: 160, life: 0.4, size: 3, color: '#ffe14d' }); }
       break;
+    case 'pad':
+      sfx.play('powerup'); shake.kick(2);
+      fx.emit(ev.x, ev.y, 14, { speed: 180, spread: Math.PI, angle: -Math.PI / 2, life: 0.45, size: 3, color: ['#5dff8f', '#ffe14d'], grav: 300 });
+      break;
     case 'bump': sfx.play('bounce'); shake.kick(2); break;
     case 'checkpoint':
       sfx.play('checkpoint');
-      pops.add(world.p.x, world.p.y - 40, `CHECKPOINT ${ev.index}/${LEVEL.checkpoints.length}`, '#5dff8f', 16);
+      pops.add(world.p.x, world.p.y - 40, `CHECKPOINT ${ev.index}/${lv.checkpoints.length}`, '#5dff8f', 16);
       fx.emit(ev.x, ev.y - 30, 24, { speed: 220, life: 0.7, size: 4, color: ['#5dff8f', '#d6ffe2'], grav: 150 });
       break;
     case 'fall':
@@ -172,18 +217,22 @@ function handle(ev, pressedNow) {
       shell.sfx.play('victory');
       fx.emit(ev.x, ev.y - 20, 60, { speed: 360, life: 1.1, size: 5, color: ['#ffe14d', '#ff3cac', '#2de2e6', '#5dff8f'], grav: 300 });
       const ms = world.ms;
+      const medal = medalFor(lv, ms);
+      const idx = LEVELS.indexOf(lv), next = LEVELS[idx + 1];
       shell.finish({
-        win: true, title: 'Run Complete!', score: ms, scoreText: formatTime(ms),
-        facts: { won: true, ms, falls: world.falls, grapples: world.grapples },
-        counters: { grapples: world.grapples },
-        milestones: [['Under 2:30', ms < 150000 ? 20 : 0], ['Under 1:30', ms < 90000 ? 30 : 0], ['No falls', world.falls === 0 ? 20 : 0]],
-        summary: `Time ${formatTime(ms)}`,
+        win: true, title: `${lv.name} Complete!`, subtitle: `Level ${idx + 1} of ${LEVELS.length}`, score: ms, scoreText: formatTime(ms),
+        facts: { won: true, ms, falls: world.falls, grapples: world.grapples, level: lv.id, medal, pads: world.pads },
+        counters: { grapples: world.grapples, ['lv_' + lv.id]: 1, ...(medal === 'gold' ? { ['gold_' + lv.id]: 1 } : {}) },
+        milestones: [[`${medal[0].toUpperCase() + medal.slice(1)} medal`, medal === 'gold' ? 30 : medal === 'silver' ? 20 : 10], ['No falls', world.falls === 0 ? 20 : 0]],
+        summary: `${lv.name} · ${formatTime(ms)}`,
         stats: [
-          ['Checkpoints', `${LEVEL.checkpoints.length}/${LEVEL.checkpoints.length}`],
+          ['Medal', `${MEDAL_ICON[medal]} ${medal[0].toUpperCase() + medal.slice(1)}`],
+          ['Gold / Silver', `${formatTime(lv.par.gold)} / ${formatTime(lv.par.silver)}`],
           ['Falls', String(world.falls)],
           ['Grapples', String(world.grapples)],
           ['Top speed', `${Math.round(world.maxSpeed)} px/s`],
         ],
+        buttonsHTML: `${next ? `<button type="button" class="g-btn primary big" data-act="gr-next">NEXT LEVEL · ${next.name.toUpperCase()}</button>` : ''}<button type="button" class="g-btn${next ? '' : ' primary big'}" data-act="restart">RETRY FOR A BETTER TIME</button><button type="button" class="g-btn" data-act="gr-levels">ALL LEVELS</button><a class="g-btn" href="../../index.html">Return to Arcade</a>`,
       });
       break;
     }
@@ -208,8 +257,9 @@ function makeWindowPattern(ctx) {
 }
 
 function drawSky(ctx, W, H) {
+  const th = theme();
   const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, '#0b0627'); g.addColorStop(0.55, '#2b0c55'); g.addColorStop(1, '#7a1e6c');
+  g.addColorStop(0, th.sky[0]); g.addColorStop(0.55, th.sky[1]); g.addColorStop(1, th.sky[2]);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   // stars
   ctx.fillStyle = '#fff';
@@ -221,8 +271,8 @@ function drawSky(ctx, W, H) {
   ctx.globalAlpha = 1;
   // moon
   const mx = W * 0.78 - cam.x * 0.01, my = H * 0.2;
-  ctx.fillStyle = 'rgba(255,60,172,.25)'; ctx.beginPath(); ctx.arc(mx, my, 52, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#ff7ac8'; ctx.beginPath(); ctx.arc(mx, my, 36, 0, TAU); ctx.fill();
+  ctx.fillStyle = th.halo; ctx.beginPath(); ctx.arc(mx, my, 52, 0, TAU); ctx.fill();
+  ctx.fillStyle = th.moon; ctx.beginPath(); ctx.arc(mx, my, 36, 0, TAU); ctx.fill();
 }
 
 function drawSkyline(ctx, W, H, par, color, bw, minH, maxH, base) {
@@ -239,8 +289,8 @@ function drawSkyline(ctx, W, H, par, color, bw, minH, maxH, base) {
 function render(ctx, W, H) {
   if (!windowPattern) windowPattern = makeWindowPattern(ctx);
   drawSky(ctx, W, H);
-  drawSkyline(ctx, W, H, 0.12, '#1a0f45', 90, 80, 230, H * 0.8);
-  drawSkyline(ctx, W, H, 0.28, '#140b38', 120, 60, 200, H * 0.92);
+  drawSkyline(ctx, W, H, 0.12, theme().far, 90, 80, 230, H * 0.8);
+  drawSkyline(ctx, W, H, 0.28, theme().near, 120, 60, 200, H * 0.92);
 
   ctx.save();
   ctx.translate(Math.round(-cam.x + W / 2 + shake.x), Math.round(-cam.y + H / 2 + shake.y));
@@ -248,8 +298,8 @@ function render(ctx, W, H) {
   const glow = !shell.lowFx && !shell.reduced;
 
   // buildings
-  for (let n = 0; n < LEVEL.platforms.length; n++) {
-    const r = LEVEL.platforms[n];
+  for (let n = 0; n < lv.platforms.length; n++) {
+    const r = lv.platforms[n];
     if (r.x > right || r.x + r.w < left) continue;
     const hh = Math.min(r.h, bottom - r.y + 10);
     if (hh <= 0) continue;
@@ -265,14 +315,26 @@ function render(ctx, W, H) {
       if (hash(n * 5 + k) > 0.5) { ctx.fillRect(px, r.y - 16, 34, 16); ctx.fillStyle = '#2de2e6'; ctx.fillRect(px + 4, r.y - 12, 8, 3); }
       else { ctx.fillRect(px + 12, r.y - 34, 3, 34); ctx.fillStyle = '#ff3cac'; ctx.fillRect(px + 10, r.y - 38, 7, 5); }
     }
-    ctx.fillStyle = '#2de2e6';
-    if (glow) { ctx.shadowColor = '#2de2e6'; ctx.shadowBlur = 12; }
+    ctx.fillStyle = theme().edge;
+    if (glow) { ctx.shadowColor = theme().edge; ctx.shadowBlur = 12; }
     ctx.fillRect(r.x - 3, r.y - 2, r.w + 6, 3);
     ctx.shadowBlur = 0;
   }
 
+  // bounce pads
+  for (const pd of lv.pads || []) {
+    if (pd.x > right || pd.x + pd.w < left) continue;
+    const squash = 1 + Math.sin(t * 6 + pd.x) * 0.15;
+    if (glow) { ctx.shadowColor = '#5dff8f'; ctx.shadowBlur = 14; }
+    ctx.fillStyle = '#5dff8f'; ctx.fillRect(pd.x, pd.y - 7 * squash, pd.w, 7 * squash);
+    ctx.fillStyle = '#d6ffe2'; ctx.fillRect(pd.x + 4, pd.y - 7 * squash, pd.w - 8, 2);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(93,255,143,.65)'; ctx.lineWidth = 2;
+    for (let k = 0; k < 2; k++) { const yy = pd.y - 16 - ((t * 40 + k * 14) % 28); ctx.beginPath(); ctx.moveTo(pd.x + pd.w / 2 - 6, yy + 4); ctx.lineTo(pd.x + pd.w / 2, yy - 2); ctx.lineTo(pd.x + pd.w / 2 + 6, yy + 4); ctx.stroke(); }
+  }
+
   // finish gate
-  const F = LEVEL.finish;
+  const F = lv.finish;
   if (F.x < right + 100) {
     ctx.fillStyle = '#ffe14d';
     ctx.fillRect(F.x - 4, F.y - 150, 6, 150); ctx.fillRect(F.x + 90, F.y - 150, 6, 150);
@@ -286,8 +348,8 @@ function render(ctx, W, H) {
   }
 
   // checkpoints
-  for (let n = 0; n < LEVEL.checkpoints.length; n++) {
-    const c = LEVEL.checkpoints[n];
+  for (let n = 0; n < lv.checkpoints.length; n++) {
+    const c = lv.checkpoints[n];
     if (c.x < left - 40 || c.x > right + 40) continue;
     const on = world.cp > n;
     ctx.fillStyle = '#aab';
@@ -300,7 +362,7 @@ function render(ctx, W, H) {
   // anchors
   const target = world.rope ? null : world.pickAnchor(aimActive || hovering ? aim : null);
   world.reachable(reach);
-  for (const a of LEVEL.anchors) {
+  for (const a of lv.anchors) {
     if (a.x < left - 60 || a.x > right + 60 || a.y < top - 60 || a.y > bottom + 60) continue;
     const inReach = reach.indexOf(a) >= 0;
     const attached = world.rope && world.rope.anchor === a;
@@ -378,7 +440,7 @@ function drawHint(ctx, W, H) {
   let text = null;
   if (shell.state === 'playing') {
     if (!world.started) text = shell.isTouch ? 'Move or jump to start the clock' : 'Move or jump to start the clock';
-    else for (const h of LEVEL.hints) if (world.p.x >= h.x && world.p.x < h.to) { text = shell.isTouch ? h.touch : h.text; break; }
+    else for (const h of lv.hints) if (world.p.x >= h.x && world.p.x < h.to) { text = shell.isTouch ? h.touch : h.text; break; }
   }
   if (!text) return;
   ctx.font = `700 ${W < 640 ? 12 : 14}px "Trebuchet MS", system-ui, sans-serif`;
@@ -390,4 +452,4 @@ function drawHint(ctx, W, H) {
   ctx.fillStyle = '#e8ffff'; ctx.fillText(text, x, y + 1);
 }
 
-window.__grapple = { world, shell, cam }; // handy for debugging / automated tests
+window.__grapple = { shell, cam, get world() { return world; }, get level() { return lv; }, LEVELS }; // handy for debugging / automated tests

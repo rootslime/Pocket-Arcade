@@ -117,7 +117,7 @@ console.log('Grapple Rush mechanics');
   await page.evaluate(() => { const w = window.__grapple.world; w.cp = 5; w.time = 61.234; w.p.x = 10380; w.p.y = 285; w.p.vy = 0; });
   await page.keyboard.down('KeyD'); await sleep(900); await page.keyboard.up('KeyD');
   await page.waitForSelector('.p-score');
-  ok((await page.textContent('.g-panel')).includes('Run Complete'), 'finish shows victory panel');
+  ok((await page.textContent('.g-panel')).includes('Neon Heights Complete'), 'finish shows victory panel');
   const best1 = (await save(page)).games.grappleRush.bestTime;
   ok(best1 > 61000 && best1 < 64000, `best time saved (${best1})`);
   ok((await page.textContent('.g-panel')).includes('NEW PERSONAL BEST'), 'new best badge on first completion');
@@ -136,6 +136,47 @@ console.log('Grapple Rush mechanics');
   ok((await save(page)).games.grappleRush.bestTime < best1, 'faster run replaces best time');
   await page.reload(); await sleep(200);
   ok(/0:50/.test(await page.textContent('#hud-best')), 'best time persists after reload: ' + await page.textContent('#hud-best'));
+  await page.close();
+}
+
+console.log('Grapple Rush levels');
+{
+  const page = await open('games/grapple-rush/');
+  await page.evaluate(() => localStorage.removeItem('pocketArcade.v1'));
+  await page.reload(); await page.waitForSelector('.mode-btn');
+  ok((await page.locator('.mode-btn').count()) === 8, 'the start screen offers eight levels');
+  ok(/Sunset Strip/.test(await page.textContent('.mode-pick')) && /Neon Gauntlet/.test(await page.textContent('.mode-pick')), 'levels are listed by name');
+  await page.click('.mode-btn[data-mode=spring]'); await startGame(page); await sleep(200);
+  ok(await page.evaluate(() => window.__grapple.level.id === 'spring' && window.__grapple.world.level.pads.length > 3), 'picking Spring Loaded loads that course');
+  ok(/2\/8|4\/8/.test(await page.textContent('#hud-lvl')), 'HUD shows the level number: ' + await page.textContent('#hud-lvl'));
+  // bounce pad launches the runner
+  const up = await page.evaluate(async () => {
+    const w = window.__grapple.world, pad = w.level.pads[0];
+    w.p.x = pad.x + pad.w / 2; w.p.y = pad.y - 15.01; w.p.vx = 0; w.p.vy = 0; w.p.onGround = true; w.started = true;
+    await new Promise((r) => setTimeout(r, 120));
+    return { vy: w.p.vy, y: w.p.y, pads: w.pads };
+  });
+  ok(up.pads >= 1 && up.y < 480, `a bounce pad throws the player upward (${JSON.stringify(up)})`);
+  // finishing records the time for that level only
+  await page.evaluate(() => { const w = window.__grapple.world, F = w.level.finish; w.started = true; w.cp = 4; w.time = 40.5; w.p.x = F.x + 20; w.p.y = F.y - 15; w.p.vy = 0; w.p.vx = 0; });
+  await page.keyboard.down('KeyD'); await sleep(900); await page.keyboard.up('KeyD');
+  await page.waitForSelector('.p-score');
+  const txt = await page.textContent('.g-panel');
+  ok(/Spring Loaded Complete/.test(txt) && /Medal/.test(txt), 'level result shows the level and a medal');
+  ok(await page.locator('[data-act=gr-next]').count() === 1 && /chain reaction/i.test(await page.textContent("[data-act=gr-next]")), 'NEXT LEVEL button offers the following course');
+  const sv = (await save(page)).games.grappleRush;
+  ok(sv.bestTime_spring > 40000 && sv.bestTime_spring < 43000 && !sv.bestTime, `best time saved under the level (${sv.bestTime_spring})`);
+  await page.click('[data-act=gr-next]'); await sleep(300);
+  ok(await page.evaluate(() => window.__grapple.level.id === 'chain' && window.__grapple.shell.state === 'playing'), 'NEXT LEVEL starts Chain Reaction');
+  await page.evaluate(() => { const w = window.__grapple.world, F = w.level.finish; w.started = true; w.time = 30; w.p.x = F.x + 20; w.p.y = F.y - 15; w.p.vy = 0; });
+  await page.keyboard.down('KeyD'); await sleep(900); await page.keyboard.up('KeyD');
+  await page.waitForSelector('[data-act=gr-levels]');
+  await page.click('[data-act=gr-levels]'); await page.waitForSelector('.mode-btn');
+  ok((await page.locator('.mode-btn').count()) === 8 && /🥇|🥈|🥉/.test(await page.textContent('.mode-pick')), 'ALL LEVELS returns to the picker, which shows medals for cleared levels');
+  await page.reload(); await page.waitForSelector('.mode-btn');
+  ok(await page.evaluate(() => window.__grapple.level.id === 'chain'), 'the last chosen level is remembered');
+  const prof = (await save(page)).profile;
+  ok(prof.stats.perGame.grappleRush.counters.lv_spring === 1 && prof.stats.perGame.grappleRush.counters.lv_chain === 1, 'cleared levels are counted for achievements');
   await page.close();
 }
 

@@ -10,7 +10,7 @@ export const GUEST_KEY = 'pocketArcade.v1';
 export const USER_KEY_PREFIX = 'pocketArcade.u.';
 
 const defaultGames = () => ({
-  grappleRush: { bestTime: null },
+  grappleRush: { bestTime: null, bestTime_sunset: null, bestTime_cloud: null, bestTime_spring: null, bestTime_chain: null, bestTime_midnight: null, bestTime_pinball: null, bestTime_gauntlet: null },
   neonDodge: { highScore: 0, bestTime: 0 },
   turboSnake: { highScore: 0, classicHigh: 0, turboHigh: 0 },
   brickBlast: { highScore: 0, highestLevel: 1 },

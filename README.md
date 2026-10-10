@@ -4,7 +4,7 @@
 
 * Console-style launcher: horizontal game library, game detail screens, dashboard, library filters, achievements, profile and settings
 * Keyboard, mouse, touch **and gamepad** navigation and controls
-* Arcade-wide XP / level, 88 achievements, cosmetic rewards (titles, avatars, borders, themes)
+* Arcade-wide XP / level, 92 achievements, cosmetic rewards (titles, avatars, borders, themes)
 * Multiplayer screen: Quick Play, Create / Join Room (5-letter codes), Local Play and Play with Bots, driven by each game's `multiplayer` config
 * Guest mode is complete: all eleven games, local saves, local achievements, bots and local multiplayer. Accounts only add sync; online play needs a realtime service (see *Multiplayer setup*)
 
@@ -13,7 +13,7 @@
 | Game | Category | Score | Summary |
 |---|---|---|---|
 | **Pocket Tag** | Action / Multiplayer | High score, longest escape | The playground classic, turbocharged: run, sprint, slide, vault, jump and dash through four maps in Classic Tag, Freeze Tag, Infection and Crown Chase. 2–8 players: bots (3 difficulties), same-screen local play, or online rooms. |
-| **Grapple Rush** | Action | Best time | Swing across a handcrafted rooftop course. Hold to grapple, release at the right moment to keep your speed. Checkpoints, coyote time, jump buffering. |
+| **Grapple Rush** | Action | Best time per level | Eight handcrafted rooftop courses (Neon Heights, Sunset Strip, Cloud Piercer, Spring Loaded, Chain Reaction, Midnight Drop, Pinball Alley, Neon Gauntlet) with their own skies, bounce pads, gold/silver/bronze medal times and a NEXT LEVEL flow. Hold to grapple, release at the right moment to keep your speed. |
 | **Asteroid Dash** | Action / Arcade | High score, best wave | Momentum-based space shooter: splitting asteroids, saucers, telegraphed comets, upgrades. |
 | **Dungeon Pocket** | Action | High score, deepest room | Twin-stick dungeon survival. Readable enemy telegraphs (slimes, bats, imps, golems), a mini-boss every 5 rooms, 14 stackable upgrades (3 to choose from every two rooms). |
 | **Neon Dodge** | Arcade | High score | Endless survival with authored hazard patterns, near-miss streaks, dash and four power-ups. |
@@ -41,7 +41,7 @@ js/
   session.js          cheap peek at the persisted session (picks the local save namespace)
   storage.js          localStorage saves (guest + per-account cache), merge logic, sanitising
   progression.js      XP, levels, rewards, anti-exploit rules, run recording
-  achievements.js     all 88 achievement definitions + evaluation
+  achievements.js     all 92 achievement definitions + evaluation
   multiplayer.js      public identity, display-name hygiene, realtime link (reconnects), interpolation
   rooms.js            room codes, presence-based membership, ready, host handover, public matchmaking
   lobby.js            reusable lobby UI (menu, setup, room) for any multiplayer game
@@ -256,7 +256,7 @@ The Multiplayer screen, library and detail pages then show exactly the buttons t
 
 * **XP** comes from finishing runs (time played, first time in a game, personal bests, victories, game milestones and achievements). Runs under 20 s earn nothing, so start-and-quit does not farm XP.
 * **Arcade level**: level *n* needs `100 + 50 × (n − 1)` XP. Levels unlock cosmetic titles (Rookie → Pocket Legend), avatars, profile borders and console themes. Cosmetics never change gameplay.
-* **88 achievements** (6 arcade-wide + 5-10 per game, including Pocket Tag’s *You’re It!*, *Can’t Catch Me*, *Tag Master*, *Last One Standing* and *Party Time*). Unlocks show an animated toast and are listed with dates under *Achievements* and on each game's detail screen.
+* **92 achievements** (6 arcade-wide + 5-10 per game, including Pocket Tag’s *You’re It!*, *Can’t Catch Me*, *Tag Master*, *Last One Standing* and *Party Time*). Unlocks show an animated toast and are listed with dates under *Achievements* and on each game's detail screen.
 
 ## Controls and controller support
 
@@ -274,7 +274,7 @@ Every game supports keyboard, touch and (where it makes sense) a gamepad; the cr
 
 ```bash
 node tests/levels-check.mjs      # Brick Blast: every brick reachable
-node tests/grapple-bot.mjs       # Grapple Rush: every rooftop link solvable
+node tests/grapple-bot.mjs       # Grapple Rush: every rooftop link of all 8 levels solvable (LEVEL=chain,gauntlet N=4000 to narrow)
 node tests/drift-bot.mjs         # Drift Circuit: bot completes every track; drifting scores
 node tests/boutique-score.mjs    # Dream Boutique scoring is deterministic and reachable
 node tests/tag-sim.mjs           # Pocket Tag: maps connected, all modes × maps with bots, rules, movement, bot limits

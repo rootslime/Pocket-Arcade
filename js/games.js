@@ -34,13 +34,18 @@ export const GAMES = [
   },
   {
     id: 'grappleRush', slug: 'grapple-rush', title: 'Grapple Rush', tagline: 'Swing. Launch. Race.',
-    description: 'Swing across neon rooftops and chase the fastest time. Release at the right moment to fling yourself across the gap.',
+    description: 'Eight rooftop courses with swings, bounce pads and medal times. Release at the right moment to fling yourself across the gap.',
     genre: ['Action', 'Platformer'], categories: ['action'], path: 'games/grapple-rush/', icon: 'assets/icons/grapple-rush.svg',
     goal: "Cross the rooftops and reach the finish gate as fast as you can.", tips: ["Hold grapple near a glowing node, release at the top of the swing to keep your speed.", "Falling sends you back to your last checkpoint \u2014 the clock keeps running."],
     scoreType: 'time', scoreField: 'bestTime', multiplayer: false,
-    records: [{ label: 'Best Time', field: 'bestTime', fmt: 'time' }],
+    records: [
+      { label: 'Neon Heights', field: 'bestTime', fmt: 'time' }, { label: 'Sunset Strip', field: 'bestTime_sunset', fmt: 'time' },
+      { label: 'Cloud Piercer', field: 'bestTime_cloud', fmt: 'time' }, { label: 'Spring Loaded', field: 'bestTime_spring', fmt: 'time' },
+      { label: 'Chain Reaction', field: 'bestTime_chain', fmt: 'time' }, { label: 'Midnight Drop', field: 'bestTime_midnight', fmt: 'time' },
+      { label: 'Pinball Alley', field: 'bestTime_pinball', fmt: 'time' }, { label: 'Neon Gauntlet', field: 'bestTime_gauntlet', fmt: 'time' },
+    ],
     controls: { keyboard: true, touch: true, gamepad: true },
-    controlsText: ['A / D — Run', 'Space — Jump', 'E / Click — Hold to grapple'],
+    controlsText: ['A / D — Run', 'Space — Jump', 'E / Click — Hold to grapple', '8 levels — pick one on the start screen'],
     theme: { accent: '#2de2e6', background: 'radial-gradient(900px 500px at 70% 20%, #7a1e6c55, transparent), linear-gradient(160deg, #0b0627, #2b0c55)' },
   },
   {
