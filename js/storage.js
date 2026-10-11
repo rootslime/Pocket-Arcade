@@ -10,7 +10,7 @@ export const GUEST_KEY = 'pocketArcade.v1';
 export const USER_KEY_PREFIX = 'pocketArcade.u.';
 
 const defaultGames = () => ({
-  grappleRush: { bestTime: null },
+  grappleRush: { bestTime: null, bestTime_sunset: null, bestTime_cloud: null, bestTime_spring: null, bestTime_chain: null, bestTime_midnight: null, bestTime_pinball: null, bestTime_gauntlet: null },
   neonDodge: { highScore: 0, bestTime: 0 },
   turboSnake: { highScore: 0, classicHigh: 0, turboHigh: 0 },
   brickBlast: { highScore: 0, highestLevel: 1 },
@@ -20,6 +20,8 @@ const defaultGames = () => ({
   glamStudio: { highScore: 0, challengesWon: 0 },
   driftCircuit: { bestTime_neon: null, bestTime_sunset: null, bestTime_midnight: null, bestLap: null, driftBest: 0 },
   dungeonPocket: { highScore: 0, highestRoom: 0 },
+  pocketBlockBlast: { highScore: 0, highScoreTime: 0, highScoreDaily: 0, highCombo: 0, totalLines: 0, totalBlocks: 0, dailiesDone: 0 },
+  pocketTag: { highScore: 0, longestEscape: 0 },
 });
 
 const defaultProfile = () => ({
@@ -34,7 +36,7 @@ const defaultProfile = () => ({
 });
 
 const defaults = () => ({
-  settings: { muted: false, reducedMotion: null, touchPad: false, quickLaunch: false },
+  settings: { muted: false, reducedMotion: null, touchPad: false, quickLaunch: false, showOnline: true },
   games: defaultGames(),
   profile: defaultProfile(),
   blobs: {},                 // small per-game JSON documents (unlocks, saved looks, café decor ...)

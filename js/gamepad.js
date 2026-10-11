@@ -51,6 +51,23 @@ export function poll() {
 }
 
 export const state = () => poll();
+
+/** Every connected controller (for local multiplayer): [{ index, btn(i), ax(i) }] using the standard mapping. */
+export function allPads() {
+  const out = [];
+  try {
+    const list = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (const g of list) {
+      if (!g || !g.connected) continue;
+      out.push({
+        index: g.index, id: g.id,
+        btn: (i) => !!(g.buttons[i] && (g.buttons[i].pressed || g.buttons[i].value > 0.5)),
+        ax: (i) => { const v = g.axes[i] || 0; return Math.abs(v) < DEAD ? 0 : v; },
+      });
+    }
+  } catch (e) { /* ignore */ }
+  return out;
+}
 export const pressedNow = (name) => !!(cur.buttons[name] && !prev.buttons[name]);
 
 /** Map controller tokens onto a game Input. map: { action: ['a','dpadLeft','lsLeft', ...] } */

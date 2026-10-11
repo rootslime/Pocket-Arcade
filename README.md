@@ -1,19 +1,22 @@
 # Pocket Arcade
 
-**Ten games. One pocket-sized arcade.** A neon console-style arcade built with plain HTML, CSS and ES-module JavaScript (Canvas, DOM and Web Audio). It runs as a **static site on GitHub Pages**: no build step, no server of your own. Players can **play instantly as a guest**, or create a free account (Supabase Auth) to get cloud saves, cross-device XP, achievements and a profile.
+**Twelve games. One pocket-sized arcade.** A neon console-style arcade built with plain HTML, CSS and ES-module JavaScript (Canvas, DOM and Web Audio). It runs as a **static site on GitHub Pages**: no build step, no server of your own. Players can **play instantly as a guest**, or create a free account (Supabase Auth) to get cloud saves, cross-device XP, achievements and a profile. **Pocket Tag** adds bots, same-screen play and optional **online rooms** (Supabase Realtime).
 
 * Console-style launcher: horizontal game library, game detail screens, dashboard, library filters, achievements, profile and settings
 * Keyboard, mouse, touch **and gamepad** navigation and controls
-* Arcade-wide XP / level, 71 achievements, cosmetic rewards (titles, avatars, borders, themes)
-* Guest mode is complete: all ten games, local saves, local achievements. Accounts only add sync
+* Arcade-wide XP / level, 98 achievements, cosmetic rewards (titles, avatars, borders, themes)
+* Multiplayer screen: Quick Play, Create / Join Room (5-letter codes), Local Play and Play with Bots, driven by each game's `multiplayer` config
+* Guest mode is complete: all twelve games, local saves, local achievements, bots and local multiplayer. Accounts only add sync; online play needs a realtime service (see *Multiplayer setup*)
 
 ## Games
 
 | Game | Category | Score | Summary |
 |---|---|---|---|
-| **Grapple Rush** | Action | Best time | Swing across a handcrafted rooftop course. Hold to grapple, release at the right moment to keep your speed. Checkpoints, coyote time, jump buffering. |
+| **Pocket Tag** | Action / Multiplayer | High score, longest escape | The playground classic, turbocharged: run, sprint, slide, vault, jump and dash through four maps in Classic Tag, Freeze Tag, Infection and Crown Chase. 2–8 players: bots (3 difficulties), same-screen local play, or online rooms. |
+| **Grapple Rush** | Action | Best time per level | Eight handcrafted rooftop courses (Neon Heights, Sunset Strip, Cloud Piercer, Spring Loaded, Chain Reaction, Midnight Drop, Pinball Alley, Neon Gauntlet) with their own skies, bounce pads, gold/silver/bronze medal times and a NEXT LEVEL flow. Hold to grapple, release at the right moment to keep your speed. |
 | **Asteroid Dash** | Action / Arcade | High score, best wave | Momentum-based space shooter: splitting asteroids, saucers, telegraphed comets, upgrades. |
 | **Dungeon Pocket** | Action | High score, deepest room | Twin-stick dungeon survival. Readable enemy telegraphs (slimes, bats, imps, golems), a mini-boss every 5 rooms, 14 stackable upgrades (3 to choose from every two rooms). |
+| **Pocket Block Blast** | Puzzle / Casual | High score per mode | Place three pieces at a time on an 8×8 board, clear full rows and columns, chain combos. Drag and drop (with an offset preview for fingers), tap-to-place, keyboard or controller; undo ×3. **Classic**, **Time Attack** (3 min) and a **Daily Challenge** that needs no server. **Block Duel**: online 1v1 on identical pieces. |
 | **Neon Dodge** | Arcade | High score | Endless survival with authored hazard patterns, near-miss streaks, dash and four power-ups. |
 | **Brick Blast** | Arcade | High score, highest level | Breakout with six levels, four brick types, angle-controlled paddle and power-ups. |
 | **Turbo Snake** | Classic | High score per mode | Classic and Turbo (power-ups, bonus food) Snake with buffered input and swipe / D-pad. |
@@ -39,12 +42,18 @@ js/
   session.js          cheap peek at the persisted session (picks the local save namespace)
   storage.js          localStorage saves (guest + per-account cache), merge logic, sanitising
   progression.js      XP, levels, rewards, anti-exploit rules, run recording
-  achievements.js     all 71 achievement definitions + evaluation
+  achievements.js     all 98 achievement definitions + evaluation
+  multiplayer.js      public identity, display-name hygiene, realtime link (reconnects), interpolation
+  rooms.js            room codes, presence-based membership, ready, host handover, public matchmaking
+  lobby.js            reusable lobby UI (menu, setup, room) for any multiplayer game
+  presence.js         online status for signed-in players (🟢 🟡 🎮 ⚫)
   profile.js          avatars, profile dashboard helpers
   shell.js            shared game shell (overlays, HUD, canvas/DOM stage, touch, pause, finish → progression)
   gamepad.js nav.js   controller support + spatial menu navigation
   audio.js input.js fx.js toast.js ui.js util.js colors.js
 games/<slug>/         index.html + game.js (+ data/sim/level modules, style.css for DOM games)
+games/pocket-tag/     sim.js (rules + physics, pure) · bots.js · maps.js · net.js · render.js · game.js
+games/pocket-block-blast/  engine.js (pure rules, daily seed, piece generator) · game.js (canvas UI, Block Duel)
 supabase/schema.sql   database tables + Row Level Security
 tests/                automated checks (see "Testing")
 ```
@@ -157,11 +166,99 @@ Guests save to `localStorage` (`pocketArcade.v1`). When someone signs in on a de
 
 ---
 
+---
+
+## Pocket Tag
+
+*Run. Chase. Don’t get tagged.* A fast, colourful tag game for 2–8 players (humans and bots).
+
+**Modes**
+
+| Mode | How it works |
+|---|---|
+| **Classic Tag** | One player is **It**. Points for every second you are *not* It; a bonus if you aren’t It at the buzzer. After a tag the previous It is protected for ~1.8 s (no instant tag-back) and the new It is briefly dazed. |
+| **Freeze Tag** | Taggers freeze runners; a runner who stands next to a frozen teammate for ~0.8 s thaws them. Taggers win if everyone is frozen, runners win if someone survives. |
+| **Infection** | One player starts infected; everyone they tag joins them. The last survivor gets a large bonus. |
+| **Crown Chase** | Everyone chases the crown holder; tagging them steals the crown. Most crown time wins. |
+
+**Maps** (original, symmetrical and checked for connectivity by the tests): *Playground* (slides, benches, tunnels, climbing frame), *Rooftop* (ramps, vents, 2–3 tile gaps; falling respawns you on the roof), *Neon Mall* (escalators, stores, atrium, upper/lower halls), *Water Park* (pools slow you, bridges and slides are fast).
+
+**Movement**: run, **sprint** (stamina bar), **jump**, **slide** (under tunnels and pipes, keeps momentum), **dash** (cooldown), automatic **vaulting** over low obstacles, ramps that launch you, conveyor slides. There are no collisions between players, so nobody can be body-blocked.
+
+**Power-ups** (optional, the host can switch them off): ⚡ speed burst, 🛡️ shield (blocks one tag), 👻 ghost (pass through obstacles), ❄️ slow zone, 💨 dash refill. All are short and modest, so skill still decides matches.
+
+**Controls**: WASD / arrows to run · Shift sprint · Space / Enter jump · C / . slide · F / / dash. Controller: left stick (full push sprints), A jump, B slide, X dash. Touch: drag anywhere to run (push to the edge to sprint) and the JUMP / SLIDE / DASH buttons. **Local play**: Player 1 WASD, Player 2 arrow keys, further players use controllers.
+
+**Bots** (Easy / Normal / Hard) path-find around obstacles, chase, flee (using a “safety map” so they run around loops rather than into corners), use sprint / dash / slide with the same stamina and cooldowns as you, make occasional mistakes, and never react faster than 250 ms. Difficulty changes reaction time, accuracy, mistakes and how often abilities are used, not speed or perception.
+
+## Multiplayer
+
+### What works where
+
+| Option | Needs a realtime service? |
+|---|---|
+| **Play with Bots** | No |
+| **Local Play** (same device, up to 4 players) | No |
+| **Create Room / Join Room / Quick Play** | **Yes** (Supabase Realtime) |
+
+If the service isn’t configured the online buttons are not shown (the screen explains why). Bots and local play always work. Nothing pretends to be online.
+
+### Multiplayer in the other games
+
+Every mode below is real and tested; modes that need online play simply don’t appear until a realtime service is configured.
+
+| Game | Mode | Players | Where it works |
+|---|---|---|---|
+| **Turbo Snake** | **Snake Battle**: shared arena, last snake alive wins (food, knock-out trails, head-on = both out) | 2–4 | bots · same screen · online (host runs the simulation, 8 state updates/s) |
+| **Brick Blast** | **Brick Battle**: identical bricks and capsule drops from a shared seed, highest score wins | 2–4 | pass-and-play on one device · online (everyone plays at once, live opponent scores) |
+| **Neon Dodge** | **Last Standing**: everyone faces the same seeded hazard sequence; last player alive wins | 2–6 | online only |
+| **Drift Circuit** | **Multiplayer Race**: same track, positions streamed and interpolated, finish times decide, *Photo Finish* achievement | 2–6 | online only |
+| **Asteroid Dash** | **Co-op**: shared battlefield and waves, individual lives and scores, no friendly fire | 2–4 | same screen only (online co-op would need an authoritative server) |
+
+These use the shared `js/mp-kit.js` helpers (lobby, connection banner, host handover, standings, `PeerBoard` for score/progress heartbeats) on top of `js/rooms.js`.
+
+### Multiplayer setup (Supabase Realtime)
+
+Pocket Arcade reuses the same Supabase project as accounts. **Realtime Broadcast and Presence need no tables and no SQL.**
+
+1. Put the project URL and anon key in `js/config.js` (see *Authentication setup*, step 7). Guests can play online too; accounts are not required.
+2. In the Supabase dashboard open **Realtime → Settings** (or **Project Settings → Realtime**) and make sure **Allow public access** is enabled (default for new projects). Rooms use public Broadcast/Presence channels so guests can join without signing in.
+3. That’s it. Deploy to GitHub Pages as usual.
+
+**Free-tier limits.** Supabase’s free plan limits concurrent connections, messages per second and monthly messages (check the current numbers on their pricing page). A running match uses roughly: each human ≈ 8 position updates/s, the host ≈ 8 combined bot + rules updates/s. If you hit limits lower `POS_HZ` / `HOST_HZ` in `games/pocket-tag/net.js`; interpolation hides lower rates. A few friends playing is comfortable on the free tier; a popular public arcade would need a paid plan or your own game server.
+
+### How it works
+
+* **Rooms**: a room is a Realtime channel `pa:room:<game>:<CODE>`. It exists while someone is present in it. Codes are 5 characters from an alphabet without look-alikes (`K7P4Q`). Joining a code nobody is in says “No room with that code”. Full rooms, matches in progress and duplicate players (same player id in two tabs) are refused with a clear message.
+* **Quick Play** uses a second channel where public rooms advertise (code, players, state). You join the fullest open room, or become the host of a new public one; a public room starts a 15 s countdown once two players are in.
+* **Host** = the player who has been in the room longest. Settings, ready flags and the roster are presence data. If the host leaves, the next player takes over automatically (in a lobby *and* mid-match, continuing from the last state snapshot).
+* **Network model for Pocket Tag**: every player simulates their *own* movement locally (no input lag = client-side prediction) and sends it ~8×/s. Other players are drawn ~130 ms in the past and interpolated, with brief extrapolation if packets are late. The **host runs the rules and the bots**: it validates positions (an impossible jump is corrected with a `corr` message), resolves tags (a client says “I touched X”; the host checks recent positions with lag compensation), and broadcasts compact rule snapshots, bot positions and one-off events.
+* **Connection handling**: `CONNECTING… / CONNECTED / CONNECTION LOST / RECONNECTING…` is shown; the link retries with back-off. A player who drops is replaced by a bot after 2 s and gets their character back if they return within 25 s. Nothing leaves players on a dead loading screen: if reconnecting fails the match ends with an explanation.
+* **Public data only**: display name (max 16 chars, sanitised, never inserted as HTML), arcade level, avatar and border, a random per-device public player id, and online status. Email, tokens and the account id are never sent. Guests get a generated name like `NeonRunner18`.
+* **Presence** (🟢 ONLINE · 🟡 IN LOBBY · 🎮 IN GAME · ⚫ OFFLINE) is shown for signed-in players who leave *Show my online status* on (Settings). Guests are never listed.
+* **Friends**: share the room code or the invite link (`#/multiplayer?game=pocketTag&code=K7P4Q`). No contacts access.
+
+### Security and honesty about cheating
+
+Messages are validated (shape, ranges, membership, host-only commands), rooms can’t be started by non-hosts, scores are computed only by the host, and impossible movement is corrected. **But this is a casual, client-authoritative design:** the browser is untrusted, Realtime messages carry a self-declared sender key, and someone who reads the source can forge messages (for example claim to be the host in a room they join). Strong competitive anti-cheat requires an authoritative game server (for example a Supabase Edge Function / Colyseus / a small Node server holding the simulation), which a purely static site cannot provide. XP from multiplayer matches is cosmetic and rate-limited like everything else.
+
+### Adding multiplayer to another game
+
+Declare it in `js/games.js`:
+
+```js
+multiplayer: { supported: true, minPlayers: 2, maxPlayers: 8, bots: true, local: true, online: true, players: '2–8 players', modes: ['…'] }
+```
+
+The Multiplayer screen, library and detail pages then show exactly the buttons the game supports (online ones only when a realtime service is configured). In the game, create the lobby with `createLobby({ game, schema, defaults, onStart })` from `js/lobby.js` (the schema describes the host’s settings) and use `Room` (`js/rooms.js`) + `Track` / `Ticker` (`js/multiplayer.js`) for messages, interpolation and send rates. `games/pocket-tag/game.js` is the reference.
+
+---
+
 ## Progression, achievements and rewards
 
 * **XP** comes from finishing runs (time played, first time in a game, personal bests, victories, game milestones and achievements). Runs under 20 s earn nothing, so start-and-quit does not farm XP.
 * **Arcade level**: level *n* needs `100 + 50 × (n − 1)` XP. Levels unlock cosmetic titles (Rookie → Pocket Legend), avatars, profile borders and console themes. Cosmetics never change gameplay.
-* **71 achievements** (6 arcade-wide + 5-7 per game). Unlocks show an animated toast and are listed with dates under *Achievements* and on each game's detail screen.
+* **98 achievements** (6 arcade-wide + 5-10 per game, including Pocket Tag’s *You’re It!*, *Can’t Catch Me*, *Tag Master*, *Last One Standing* and *Party Time*). Unlocks show an animated toast and are listed with dates under *Achievements* and on each game's detail screen.
 
 ## Controls and controller support
 
@@ -175,16 +272,41 @@ Every game supports keyboard, touch and (where it makes sense) a gamepad; the cr
 4. Add achievements to `js/achievements.js` (and default save fields in `js/storage.js` for typed defaults).
 5. Test under a sub-path: `node tests/serve.mjs` serves the repo at `/pocket-arcade/`.
 
+## Pocket Block Blast
+
+An original block-placement puzzle (no assets, code or sounds from any other game). Files: `games/pocket-block-blast/` — `engine.js` (pure rules, tested headless), `game.js` (canvas rendering, input, effects), `index.html`, `style.css`.
+
+* **Rules** — three pieces per set on an 8×8 board; a full row or column clears. A game ends only when *none* of the remaining pieces fits anywhere (one stuck piece never ends it). Pieces: dot, lines of 2–5, 2×2, 2×3, 3×3, corners, L, big L, T, Z/S and plus, in all rotations.
+* **Scoring** — each placed cell is 1 point; clearing *n* lines with one piece scores `50·n·(n+1)` (100, 300, 600, 1,000 …) × the combo. The combo counts back-to-back placements that clear something and resets on a placement that clears nothing. Emptying the board adds 2,000.
+* **Fair pieces** — Classic and Time Attack look at the board: they re-roll sets in which nothing fits, and (88% of the time) sets that cannot be placed one after another. Bigger shapes get more common as your score climbs. It is not guaranteed that you can survive forever.
+* **Modes** — Classic (endless), Time Attack (3:00, own high score) and Daily Challenge. Each keeps its own record.
+* **Undo** — three per game, restores the board, score, combo, pieces and the random state exactly. Not available in Block Duel.
+* **Controls** — drag (the piece floats above your finger and a translucent preview shows where it lands: green outline = fits, red dashed with ✕ = blocked, so colour is never the only cue); or tap a piece then tap the board; or `1 2 3` + arrows + Enter, `Z` undo; D-pad / A / RB on a controller. Portrait and landscape layouts; the board has `touch-action: none` so dragging never scrolls the page.
+* **Daily Challenge algorithm** (needs no backend; the same day gives the same puzzle on every device):
+  1. `key` = the UTC date `YYYY-MM-DD`.
+  2. `seed` = FNV-1a (32-bit) of `pocket-block-blast:v1:<key>` (the `v1` is the challenge version; bump it to change every puzzle).
+  3. The starting board (10–13 blocks, never a complete line) comes from `mulberry32(seed)`; set *k* comes from `mulberry32(seed ^ fnv("set"+k))`, so the ten sets (30 pieces) never depend on how you play.
+  4. *Curation:* a built-in greedy bot plays the day. If it gets stuck or scores under 1,200 the next deterministic attempt (`…#1`, `…#2`, …) is used, so no day starts unwinnable. The goal is 80% of the bot's score (1,200–3,000).
+  5. Completion is stored per date in your save (`blobs.pocketBlockBlast`), so *Daily Player* (7 different days) works offline and syncs with your account.
+* **Block Duel (online 1v1)** — needs the realtime service (see *Multiplayer setup*); the button simply does not exist without it. The host picks a seed; both players receive the same 8 sets, play on their own boards, and see each other's score. Highest score after the 8 sets (or 5 minutes) wins; there is a rematch button. It reuses the Brick Battle plumbing, so a disconnect is handled like any other room.
+
 ## Testing
 
 ```bash
 node tests/levels-check.mjs      # Brick Blast: every brick reachable
-node tests/grapple-bot.mjs       # Grapple Rush: every rooftop link solvable
+node tests/grapple-bot.mjs       # Grapple Rush: every rooftop link of all 8 levels solvable (LEVEL=chain,gauntlet N=4000 to narrow)
 node tests/drift-bot.mjs         # Drift Circuit: bot completes every track; drifting scores
 node tests/boutique-score.mjs    # Dream Boutique scoring is deterministic and reachable
-node tests/e2e-games.mjs         # all ten games in a real browser (Playwright + Chromium)
+node tests/tag-sim.mjs           # Pocket Tag: maps connected, all modes × maps with bots, rules, movement, bot limits
+node tests/e2e-games.mjs         # the single-player games in a real browser (Playwright + Chromium)
+node tests/block-engine.mjs      # Pocket Block Blast rules: placement, clears, scoring, combos, game over, undo, daily seed, fairness
+node tests/e2e-blockblast.mjs    # Pocket Block Blast in the browser: mouse, touch, tap-to-place, keyboard, modes, saves, daily
+node tests/e2e-multiplayer.mjs   # Pocket Tag + multiplayer: bots, local, rooms, sync, host handover, reconnects, validation
+node tests/battle-sim.mjs        # Snake Battle rules + bots (headless)
+node tests/e2e-battle.mjs        # Snake Battle in the browser: bots, local, online, host handover
+node tests/e2e-mpgames.mjs       # Neon Dodge Last Standing, Brick Battle, Drift race, Asteroid co-op, Block Duel (ONLY=dodge|brick|drift|coop|duel to run one)
 node tests/e2e-console.mjs       # console UI, navigation, gamepad, guest progression
 node tests/e2e-auth.mjs          # accounts, sync, migration, password reset (mock Supabase)
 ```
 
-The browser tests need Playwright (`npm i playwright && npx playwright install chromium`); adjust the `require` path in `tests/lib.mjs` if it is not installed at `/node-tools`. The auth tests run the app's real account code against an in-browser mock of the Supabase client, which verifies our integration and error handling. They cannot prove Supabase's own policies, so after setting up your project do this manual check: sign up two test users, then in the browser console of user B run `(await supabase.from('player_data').select('*')).data` and confirm only B's row is returned.
+The browser tests need Playwright (`npm i playwright && npx playwright install chromium`); adjust the `require` path in `tests/lib.mjs` if it is not installed at `/node-tools`. The multiplayer tests run Pocket Arcade’s real room / lobby / networking code against an in-browser mock of Supabase Realtime (tabs talk through `BroadcastChannel`, with switchable outage / latency / loss). That verifies our protocol, host handover, reconnection and validation, **not** Supabase’s service, latency or limits: do a manual two-device test after configuring your project. The auth tests run the app's real account code against an in-browser mock of the Supabase client, which verifies our integration and error handling. They cannot prove Supabase's own policies, so after setting up your project do this manual check: sign up two test users, then in the browser console of user B run `(await supabase.from('player_data').select('*')).data` and confirm only B's row is returned.

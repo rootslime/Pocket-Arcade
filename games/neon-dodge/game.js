@@ -2,7 +2,22 @@
 import { createShell } from '../../js/shell.js';
 import { Particles, Popups, Shake } from '../../js/fx.js';
 import { canvasPoint } from '../../js/input.js';
-import { clamp, damp, formatScore, rand, randInt, pick, TAU, circleRect } from '../../js/util.js';
+import { clamp, damp, formatScore, TAU, circleRect } from '../../js/util.js';
+import { createMpKit, standingsHTML, rankText } from '../../js/mp-kit.js';
+import { int } from '../../js/multiplayer.js';
+import { esc } from '../../js/ui.js';
+
+// ---- gameplay randomness. Solo play uses Math.random; Last Standing matches seed it so every player faces the same
+// hazards. Each pattern gets its own stream, so timing differences between devices can't make the sequences drift apart.
+const MPQ = new URLSearchParams(location.search).has('mp');
+const MP = { on: false, fresh: false, room: null, seed: 0, T0: 0, cd: 0, peers: new Map(), keyToIdx: new Map(), myIdx: 0, ended: false, hb: 0, offs: [], kit: null, deadAt: null, info: null };
+function mulberry32(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+let RNG = Math.random, master = Math.random, puRng = Math.random;
+const newStream = () => (MP.on ? mulberry32(Math.floor(master() * 4294967296)) : Math.random);
+const rand = (a = 1, b) => (b === undefined ? RNG() * a : a + RNG() * (b - a));
+const randInt = (a, b) => Math.floor(rand(a, b + 1));
+const pick = (arr) => arr[Math.floor(RNG() * arr.length)];
+const withRng = (r, fn) => { const prev = RNG; RNG = r; try { return fn(); } finally { RNG = prev; } };
 
 const W = 480, H = 640;
 const PR = 9;                     // player radius
@@ -78,9 +93,13 @@ const shell = createShell({
   update,
   ambient(dt) { fx.update(dt); pops.update(dt); shake.update(dt); },
   render,
+  ...(MPQ ? { customStart: true, onReady: mpReady, livePause: () => MP.on, pauseHTML: mpPauseHTML, onAct: mpAct } : {}),
 });
 
 function reset() {
+  if (MP.on && MP.fresh) { master = mulberry32(MP.seed); puRng = mulberry32(MP.seed ^ 0x9e3779b9); MP.fresh = false; MP.deadAt = null; MP.ended = false; MP.cd = 3.2; MP.hb = 0; }
+  else if (!MP.on) { master = Math.random; puRng = Math.random; }
+  RNG = Math.random;
   Object.assign(S.p, { x: W / 2, y: H * 0.78, vx: 0, vy: 0, dashT: 0, dashCd: 0, dx: 0, dy: -1, inv: 0 });
   S.hz.length = 0; S.pu.length = 0; S.timers.length = 0; S.warn.length = 0;
   Object.assign(S, { t: 0, score: 0, mult: 1, streak: 0, streakT: 0, grazes: 0, bestStreak: 0, picks: 0, dashes: 0, live30: false, live120: false, nextPattern: 1.4, nextPU: 9, last: '', dead: false, scoreAcc: 0, pulse: 0 });
@@ -90,9 +109,9 @@ function reset() {
 }
 
 // ---------------------------------------------------------------- difficulty & patterns
-const spd = () => Math.min(2.1, 1 + S.t / 110);               // global hazard speed
-const diff = () => S.t / 20;                                    // difficulty tier
-const after = (sec, fn) => S.timers.push({ t: sec, fn });
+const spd = () => Math.min(2.1, 1 + (S.t + MP.T0) / 110);       // global hazard speed
+const diff = () => (S.t + MP.T0) / 20;                          // difficulty tier
+const after = (sec, fn) => { const r = RNG; S.timers.push({ t: sec, fn: () => withRng(r, fn) }); };
 
 function addHz(h) { if (S.hz.length < MAX_HAZ) { h.id = ++uid; h.gcd = 0; S.hz.push(h); } }
 let uid = 0;
@@ -110,7 +129,7 @@ const PATTERNS = {
         let c; do { c = randInt(0, cols - 1); } while (c >= g && c < g + gapCols);
         const w = cw - 8 + rand(-6, 12);
         block(c * cw + 4, -44, w, rand(26, 40), 0, v * rand(0.9, 1.15), { col: 0 });
-        if (Math.random() < 0.4) { // second block in the same row, still outside the gap
+        if (RNG() < 0.4) { // second block in the same row, still outside the gap
           let c2; do { c2 = randInt(0, cols - 1); } while (c2 === c || (c2 >= g && c2 < g + gapCols));
           block(c2 * cw + 4, -44, cw - 8, rand(26, 40), 0, v, { col: 0 });
         }
@@ -123,7 +142,7 @@ const PATTERNS = {
     const ys = [];
     for (let i = 0; i < n; i++) {
       let y, tries = 0;
-      do { y = rand(70, H - 70); tries++; } while (tries < 12 && (ys.some((v) => Math.abs(v - y) < 170) || Math.abs(y - S.p.y) < 26));
+      do { y = rand(70, H - 70); tries++; } while (tries < 12 && (ys.some((v) => Math.abs(v - y) < 170) || (!MP.on && Math.abs(y - S.p.y) < 26)));
       ys.push(y);
       laser('h', y, warnT + i * 0.5, 0.55);
     }
@@ -175,7 +194,7 @@ const PATTERNS = {
     addHz({ k: 'mine', x, y, vx: 0, vy: 0, r: 11, arm: 0.9, life: 8 });
   } },
   sweep: { from: 46, weight: 3, run() {
-    const fromLeft = Math.random() < 0.5;
+    const fromLeft = RNG() < 0.5;
     const rows = 3, v = 210 * spd();
     const y0 = rand(120, H - 330);
     for (let i = 0; i < rows; i++) {
@@ -191,23 +210,27 @@ function laser(dir, pos, warn, active) {
 function directorUpdate(dt) {
   S.nextPattern -= dt;
   if (S.nextPattern > 0) return;
-  const avail = Object.entries(PATTERNS).filter(([name, p]) => S.t >= p.from);
+  RNG = newStream();                                              // every pattern run has its own random stream
+  const avail = Object.entries(PATTERNS).filter(([name, p]) => S.t + MP.T0 >= p.from);
   let total = 0;
   for (const [name, p] of avail) total += name === S.last ? p.weight * 0.3 : p.weight;
-  let r = Math.random() * total, chosen = avail[0];
+  let r = RNG() * total, chosen = avail[0];
   for (const e of avail) { r -= e[0] === S.last ? e[1].weight * 0.3 : e[1].weight; if (r <= 0) { chosen = e; break; } }
   chosen[1].run();
   S.last = chosen[0];
+  (S.seq || (S.seq = [])).push(chosen[0] + ':' + Math.round(RNG() * 1e6));   // pattern log (used by the tests to check every player sees the same hazards)
+  if (S.seq.length > 60) S.seq.shift();
   // combine a second pattern at high difficulty (never two of the same type back-to-back)
-  if (diff() > 5 && Math.random() < Math.min(0.5, (diff() - 5) * 0.08)) {
+  if (diff() > 5 && RNG() < Math.min(0.5, (diff() - 5) * 0.08)) {
     const others = avail.filter((e) => e[0] !== chosen[0] && e[0] !== 'wall' && chosen[0] !== 'wall');
     if (others.length) after(0.9, () => pick(others)[1].run());
   }
-  S.nextPattern = Math.max(0.85, 2.5 - S.t * 0.022) * rand(0.9, 1.15);
+  S.nextPattern = Math.max(0.85, 2.5 - (S.t + MP.T0) * 0.022) * rand(0.9, 1.15);
 }
 
 // ---------------------------------------------------------------- update
 function update(dt) {
+  if (MP.on && !mpStep(dt)) return;
   const i = shell.input;
   const p = S.p;
   S.t += dt;
@@ -302,7 +325,7 @@ function update(dt) {
 
   // --- power-ups
   S.nextPU -= dt;
-  if (S.nextPU <= 0) { spawnPU(); S.nextPU = rand(11, 16); }
+  if (S.nextPU <= 0) withRng(puRng, () => { spawnPU(); S.nextPU = rand(11, 16); });
   for (let k = S.pu.length - 1; k >= 0; k--) {
     const u = S.pu[k];
     u.y += 55 * dt; u.life -= dt; u.a += dt * 3;
@@ -314,7 +337,7 @@ function update(dt) {
   S.streakT -= dt;
   if (S.streakT <= 0 && S.streak > 0) { S.streak = 0; }
   S.mult = (1 + Math.min(5, Math.floor(S.streak / 3))) * (S.fx.double > 0 ? 2 : 1);
-  S.scoreAcc += dt * 10 * S.mult;
+  if (!S.dead) S.scoreAcc += dt * 10 * S.mult;
   if (S.scoreAcc >= 1) { const g = Math.floor(S.scoreAcc); S.score += g; S.scoreAcc -= g; }
 
   fx.update(dt); pops.update(dt); shake.update(dt);
@@ -371,10 +394,12 @@ function breakShield() {
 }
 
 function die(h) {
+  if (S.dead) return;
   S.dead = true;
   const p = S.p;
   shell.sfx.play('explosion'); shake.kick(14); shell.hitStop(0.12);
   fx.emit(p.x, p.y, 60, { speed: 380, life: 0.9, size: 6, color: ['#ff3cac', '#2de2e6', '#fff', '#ffe14d'] });
+  if (MP.on) { S.p.inv = 1e9; mpOut(); return; }       // Last Standing: you keep watching the arena until the match ends
   const sec = Math.floor(S.t);
   shell.finish({
     win: false, score: S.score,
@@ -398,9 +423,10 @@ const PU_TYPES = [
 ];
 
 function spawnPU() {
-  if (S.pu.length >= 2) return;
-  const t = pick(PU_TYPES.filter((u) => !(u.id === 'shield' && S.fx.shield > 0)));
-  S.pu.push({ x: rand(50, W - 50), y: -16, t, life: 12, a: 0 });
+  const t = pick(PU_TYPES);
+  const px = rand(50, W - 50);                                    // always consume the same randomness, whatever the player did
+  if (S.pu.length >= 2 || (t.id === 'shield' && S.fx.shield > 0)) return;
+  S.pu.push({ x: px, y: -16, t, life: 12, a: 0 });
 }
 
 function collect(u) {
@@ -414,6 +440,14 @@ function collect(u) {
 
 // ---------------------------------------------------------------- render
 function render(ctx) {
+  renderWorld(ctx);
+  if (MP.on && MP.cd > 0) {
+    ctx.font = '900 120px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.fillStyle = '#ff3cac';
+    ctx.strokeText(String(Math.ceil(MP.cd)), W / 2, H / 2); ctx.fillText(String(Math.ceil(MP.cd)), W / 2, H / 2);
+  }
+}
+
+function renderWorld(ctx) {
   const glow = !shell.lowFx && !shell.reduced;
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, '#080720'); g.addColorStop(1, '#14083a');
@@ -538,4 +572,165 @@ function drawChips(ctx) {
   }
 }
 
-window.__dodge = { S, shell };
+window.__dodge = { S, shell, die };
+
+
+// ================================================================ Last Standing (online)
+// Everybody plays their own copy of the same seeded hazard sequence. Each device announces "alive / eliminated"
+// about every 0.7 s (and the heartbeat keeps repeating the final state, so a lost packet can't hide a knock-out).
+// The last player alive wins; knocked-out players are ranked by how long they survived.
+const MP_SCHEMA = [{ key: 'start', label: 'Starting difficulty', type: 'select', options: [{ v: 'normal', label: 'Normal' }, { v: 'hard', label: 'Hard (later patterns from the start)' }] }];
+const MP_CFG = { supported: true, minPlayers: 2, maxPlayers: 6, bots: false, local: false, online: true };
+let waitEl = null, peersEl = null, peersT = 0;
+
+function mpReady(sh) {
+  MP.kit = createMpKit({
+    shell: sh, game: { id: 'neonDodge', title: 'Neon Dodge', accent: '#ff3cac', mp: MP_CFG, players: '2–6 players · last player standing wins' },
+    schema: MP_SCHEMA, defaults: { start: 'normal' }, localMax: 0, settingsKey: 'nd.cfg',
+    hostExtra: () => ({ seed: (Math.random() * 4294967296) >>> 0 }),
+    onStart: mpStart,
+  });
+  MP.kit.start();
+  window.__ndmp = { MP, get kit() { return MP.kit; } };
+}
+
+function mpStart(info) {
+  MP.on = true; MP.room = info.room; MP.info = info;
+  MP.seed = ((info.extra && info.extra.seed) >>> 0) || 1;
+  MP.T0 = info.settings.start === 'hard' ? 40 : 0;
+  MP.keyToIdx = new Map(); MP.peers = new Map();
+  info.roster.slice(0, 6).forEach((m, i) => {
+    MP.keyToIdx.set(m.key, i);
+    MP.peers.set(i, { name: String(m.name), alive: true, t: 0, s: 0, seen: performance.now(), me: m.key === info.room.key });
+    if (m.key === info.room.key) MP.myIdx = i;
+  });
+  MP.fresh = true;
+  MP.kit.clearNotice();
+  MP.offs.forEach((f) => { try { f(); } catch (e) { /* ignore */ } });
+  MP.offs = [
+    MP.kit.wire(info.room, { onClosed: () => { if (MP.on) mpLeave(); } }),
+    info.room.onMsg('ld', (d, from) => {
+      const i = MP.keyToIdx.get(from.key);
+      if (i === undefined || i === MP.myIdx || !d || typeof d !== 'object') return;
+      const p = MP.peers.get(i);
+      if (!p) return;
+      p.seen = performance.now();
+      const alive = !!d.a && p.alive;                                 // once out, always out
+      if (!alive && p.alive) p.deadAt = performance.now();
+      p.alive = alive; p.t = Math.max(p.t, Math.min(9999, Number(d.t) || 0)); p.s = Math.max(p.s, int(d.s, 0, 1e8, 0));
+    }),
+  ];
+  MP.kit.setStatus('game');
+  shell.restart();
+}
+
+function sendLd() {
+  if (!MP.room) return;
+  MP.room.send('ld', { a: S.dead ? 0 : 1, t: Math.round((S.dead && MP.deadAt !== null ? MP.deadAt : S.t) * 10) / 10, s: S.score });
+}
+
+function mpOut() {
+  MP.deadAt = S.t;
+  sendLd();
+  if (!waitEl) { waitEl = document.createElement('div'); waitEl.className = 'mp-wait'; shell.stage.appendChild(waitEl); }
+}
+
+function mpStep(dt) {
+  mpPeersUI(dt);
+  if (MP.cd > 0) {
+    fx.update(dt); pops.update(dt); shake.update(dt);
+    const before = Math.ceil(MP.cd);
+    MP.cd -= dt;
+    if (Math.ceil(MP.cd) !== before) shell.sfx.play(MP.cd > 0 ? 'tick' : 'go');
+    return false;
+  }
+  const now = performance.now();
+  const me = MP.peers.get(MP.myIdx);
+  if (me) { me.alive = !S.dead; me.t = S.dead && MP.deadAt !== null ? MP.deadAt : S.t; me.s = S.score; }
+  MP.hb -= dt;
+  if (MP.hb <= 0) { MP.hb = 0.7; sendLd(); }
+  // a player who vanished (no heartbeat and gone from the room) counts as knocked out
+  for (const [key, i] of MP.keyToIdx) {
+    const p = MP.peers.get(i);
+    if (!p || i === MP.myIdx || !p.alive) continue;
+    if (now - p.seen > 7000 && MP.room && !MP.room.members.has(key)) p.alive = false;
+  }
+  if (!MP.ended && S.t > 2 && MP.peers.size >= 2 && [...MP.peers.values()].filter((p) => p.alive).length <= 1) mpFinish();
+  if (waitEl) {
+    const alive = [...MP.peers.values()].filter((p) => p.alive).length;
+    waitEl.textContent = `KNOCKED OUT at ${S.dead ? MP.deadAt.toFixed(1) : '?'}s · waiting for the others (${alive} still alive)`;
+  }
+  return true;
+}
+
+function mpPeersUI(dt) {
+  peersT -= dt;
+  if (peersT > 0) return;
+  peersT = 0.3;
+  if (!peersEl) { peersEl = document.createElement('div'); peersEl.className = 'mp-peers'; peersEl.setAttribute('aria-hidden', 'true'); shell.stage.appendChild(peersEl); }
+  peersEl.hidden = !MP.on;
+  peersEl.innerHTML = [...MP.peers.values()].sort((a, b) => (b.alive - a.alive) || (b.t - a.t)).map((p) => `<div class="${p.alive ? '' : 'out'}${p.me ? ' me' : ''}"><b>${esc(p.name.slice(0, 10))}</b><span>${p.alive ? '●' : p.t.toFixed(0) + 's'}</span></div>`).join('');
+}
+
+function mpFinish() {
+  MP.ended = true;
+  if (waitEl) { waitEl.remove(); waitEl = null; }
+  const list = [...MP.peers.entries()].map(([i, p]) => ({ i, ...p })).sort((a, b) => (b.alive - a.alive) || (b.t - a.t) || (b.s - a.s));
+  const rank = list.findIndex((x) => x.i === MP.myIdx) + 1;
+  const me = MP.peers.get(MP.myIdx);
+  const win = rank === 1 && list.length > 1;
+  const secs = me.t;
+  const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+  shell.finish({
+    win, title: 'MATCH OVER', subtitle: `You finished ${rankText(rank)} of ${list.length}`, score: S.score, delay: 900,
+    facts: { secs, score: S.score, grazes: S.grazes, streak: S.bestStreak, picks: S.picks, dashes: S.dashes, ls: true, win, players: list.length },
+    counters: { lsMatches: 1, lsWins: win ? 1 : 0 },
+    milestones: [...(win ? [['Last one standing', 20]] : []), ['Survival time', Math.min(40, Math.floor(secs / 10) * 4)], ['Played with others', 10]],
+    summary: `Last Standing · ${rankText(rank)} of ${list.length}`,
+    stats: [['Survived', fmt(secs)], ['Near misses', String(S.grazes)], ['Players', String(list.length)], ['Placement', rankText(rank)]],
+    extraHTML: standingsHTML(list.map((x) => ({ name: x.name, text: x.alive ? 'last standing' : fmt(x.t), me: x.me })), 'Standings'),
+    buttonsHTML: '<button type="button" class="g-btn primary big" data-act="nd-again">PLAY AGAIN</button><button type="button" class="g-btn" data-act="nd-lobby">RETURN TO LOBBY</button><a class="g-btn" href="../../index.html">ARCADE HOME</a>',
+  });
+  MP.kit.setStatus('lobby');
+}
+
+function mpCleanup() {
+  MP.offs.forEach((f) => { try { f(); } catch (e) { /* ignore */ } }); MP.offs = [];
+  if (waitEl) { waitEl.remove(); waitEl = null; }
+  if (peersEl) peersEl.hidden = true;
+}
+
+function mpLeave() {
+  const room = MP.room;
+  MP.on = false; MP.room = null; MP.fresh = false;
+  mpCleanup();
+  if (room && !room.closed) room.leave().catch(() => {});
+  MP.kit.conn(undefined);
+  shell.toReady();
+  MP.kit.setStatus('online');
+  MP.kit.lobby.openMenu();
+}
+
+function mpBackToRoom(ready) {
+  const room = MP.room;
+  MP.on = false; MP.fresh = false;
+  mpCleanup();
+  MP.kit.conn(undefined);
+  shell.toReady();
+  MP.kit.setStatus('lobby');
+  MP.kit.lobby.backToRoom(room, { ready });
+}
+
+function mpAct(act) {
+  if (act === 'nd-again') { mpBackToRoom(true); return true; }
+  if (act === 'nd-lobby') { mpBackToRoom(false); return true; }
+  if (act === 'nd-leave') { mpLeave(); return true; }
+  if (act === 'restart') return true;
+  return false;
+}
+
+function mpPauseHTML() {
+  return `<h2 id="g-panel-title">Menu</h2><p class="p-sub">The match keeps going while this menu is open.</p>
+    <div class="p-menu"><button type="button" class="g-btn primary big" data-act="resume">Resume</button><button type="button" class="g-btn" data-act="help">How to play</button>
+    <button type="button" class="g-btn" data-act="mute">${shell.store.isMuted() ? 'Sound: OFF' : 'Sound: ON'}</button><button type="button" class="g-btn" data-act="nd-leave">Leave match</button><a class="g-btn" href="../../index.html">Arcade Home</a></div>`;
+}

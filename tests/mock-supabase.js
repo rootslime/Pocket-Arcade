@@ -6,6 +6,77 @@ const load = () => { try { return JSON.parse(localStorage.getItem(DBKEY)) || { u
 const saveDb = (db) => localStorage.setItem(DBKEY, JSON.stringify(db));
 const uid = () => Math.random().toString(16).slice(2).padEnd(32, '0').slice(0, 32) + '-0000-4000-8000-000000000000';
 
+
+// ---- Realtime (Broadcast + Presence) over BroadcastChannel: every page in the same browser context is a "peer".
+const RT = (window.__mockRT = window.__mockRT || { latency: 0, jitter: 0, loss: 0, down: false, sent: {}, bytes: 0, channels: new Set() });
+const rid = () => Math.random().toString(36).slice(2, 10);
+window.addEventListener('pagehide', () => RT.channels.forEach((c) => c.__bye()));
+RT.drop = () => { RT.down = true; RT.channels.forEach((c) => c.__drop()); };
+RT.restore = () => { RT.down = false; };
+
+function makeChannel(topic, opts) {
+  const cfg = (opts && opts.config) || {};
+  const key = (cfg.presence && cfg.presence.key) || rid();
+  const id = rid();
+  const bc = new BroadcastChannel('mockrt:' + topic);
+  const hb = [], hp = { sync: [], join: [], leave: [] };
+  const peers = new Map();
+  let myMeta = null, subscribed = false, cb = null, closed = false;
+  const post = (m) => { if (closed) return; bc.postMessage({ ...m, from: id }); };
+  const sync = () => hp.sync.forEach((f) => f());
+  const deliver = (fn) => {
+    if (RT.loss && Math.random() < RT.loss) return;
+    const d = RT.latency + (RT.jitter ? Math.random() * RT.jitter : 0);
+    if (d > 0) setTimeout(fn, d); else fn();
+  };
+  bc.onmessage = (ev) => {
+    const m = ev.data;
+    if (!m || m.from === id || !subscribed || RT.down || closed) return;
+    if (m.t === 'b') deliver(() => { if (subscribed) hb.forEach((h) => { if (h.event === m.event) h.fn({ type: 'broadcast', event: m.event, payload: m.payload }); }); });
+    else if (m.t === 'p') { const had = peers.has(m.key); peers.set(m.key, { meta: m.meta, from: m.from }); if (!had) hp.join.forEach((f) => f({ key: m.key, newPresences: [m.meta] })); sync(); }
+    else if (m.t === 'bye') { const p = peers.get(m.key); if (p) { peers.delete(m.key); hp.leave.forEach((f) => f({ key: m.key, leftPresences: [p.meta] })); sync(); } }
+    else if (m.t === 'who') { if (myMeta) post({ t: 'p', key, meta: myMeta }); }
+  };
+  const ch = {
+    topic, __key: key,
+    on(type, filter, fn) {
+      if (type === 'broadcast') hb.push({ event: filter.event, fn });
+      else if (type === 'presence') hp[filter.event] && hp[filter.event].push(fn);
+      return ch;
+    },
+    subscribe(callback) {
+      cb = callback; RT.channels.add(ch);
+      setTimeout(() => {
+        if (closed) return;
+        if (RT.down) { callback('CHANNEL_ERROR', new Error('mock realtime is down')); return; }
+        subscribed = true; callback('SUBSCRIBED');
+        post({ t: 'who' });
+        sync();
+      }, 12);
+      return ch;
+    },
+    async track(meta) { myMeta = JSON.parse(JSON.stringify(meta)); post({ t: 'p', key, meta: myMeta }); sync(); return 'ok'; },
+    async untrack() { if (myMeta) { myMeta = null; post({ t: 'bye', key }); sync(); } return 'ok'; },
+    presenceState() {
+      const out = {};
+      for (const [k, v] of peers) out[k] = [v.meta];
+      if (myMeta && subscribed) out[key] = [myMeta];
+      return out;
+    },
+    send(msg) {
+      if (!subscribed || RT.down) return 'error';
+      const n = (RT.sent[msg.event] = (RT.sent[msg.event] || 0) + 1); void n;
+      try { RT.bytes += JSON.stringify(msg.payload).length; } catch (e) { /* ignore */ }
+      post({ t: 'b', event: msg.event, payload: JSON.parse(JSON.stringify(msg.payload)) });
+      return 'ok';
+    },
+    __bye() { if (myMeta) post({ t: 'bye', key }); },
+    __drop() { const was = subscribed; subscribed = false; peers.clear(); if (was && myMeta) post({ t: 'bye', key }); if (was && cb) cb('CLOSED'); },
+    __close() { if (myMeta) post({ t: 'bye', key }); closed = true; subscribed = false; RT.channels.delete(ch); try { bc.close(); } catch (e) { /* ignore */ } },
+  };
+  return ch;
+}
+
 export function createClient(url, key) {
   const ref = new URL(url).hostname.split('.')[0];
   const SKEY = `sb-${ref}-auth-token`;
@@ -104,7 +175,7 @@ export function createClient(url, key) {
     };
     return api;
   }
-  return { auth, from };
+  return { auth, from, channel: makeChannel, async removeChannel(ch) { if (ch && ch.__close) ch.__close(); return 'ok'; } };
 }
 
 // helpers the tests call from page.evaluate

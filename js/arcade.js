@@ -1,6 +1,6 @@
 // Pocket Arcade console UI: home, library, game detail, achievements, profile and settings.
 // Everything is generated from games.js / achievements.js and the player's save data.
-import { GAMES, CATEGORIES, gameById, gameBySlug, headline, recordRows } from './games.js';
+import { GAMES, CATEGORIES, SHELVES, gameById, gameBySlug, headline, recordRows } from './games.js';
 import * as store from './storage.js';
 import * as auth from './auth.js';
 import * as cloud from './cloud-save.js';
@@ -15,11 +15,14 @@ import { moveFocus, isTyping } from './nav.js';
 import * as gp from './gamepad.js';
 import { isConfigured, peekUser } from './session.js';
 import { formatScore } from './util.js';
+import * as presence from './presence.js';
+import { onlineAvailable, getDisplayName, setDisplayName, sanitizeName, NAME_MAX } from './multiplayer.js';
+import { normalizeCode, isValidCode, ROOM_ERRORS } from './rooms.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const view = $('#view');
-const ROUTES = ['home', 'library', 'achievements', 'profile', 'settings'];
-const NAV_TITLES = { home: 'Home', library: 'Library', achievements: 'Achievements', profile: 'Profile', settings: 'Settings' };
+const ROUTES = ['home', 'library', 'multiplayer', 'achievements', 'profile', 'settings'];
+const NAV_TITLES = { home: 'Home', library: 'Library', multiplayer: 'Multiplayer', achievements: 'Achievements', profile: 'Profile', settings: 'Settings' };
 
 let user = null;             // signed-in user (from auth.js) or null for guests
 let sel = Number(sessionStorage.getItem('pa.sel') || 0) || 0;
@@ -29,6 +32,7 @@ let route = { name: 'home' };
 let renderToken = 0;
 let prevRoute = 'home';
 let syncLabel = '';
+let mpParams = null;
 
 const save = () => store.getSave();
 const reduced = () => store.prefersReducedMotion();
@@ -111,12 +115,14 @@ function heroHTML(g) {
       <small class="eyebrow">${g.genre.map(esc).join(' • ')}</small>
       <h1 class="hero-title">${esc(g.title)}</h1>
       <p class="hero-tag">${esc(g.tagline)}</p>
+      ${g.multiplayer ? `<p class="hero-mp">👥 ${esc(g.multiplayer.players)} · ${g.multiplayer.modes.map(esc).join(' • ')}</p>` : ''}
       <div class="hero-stats">
         <div><span>${esc(hl.label.toUpperCase())}</span><b class="${hl.has ? '' : 'empty'}">${esc(hl.text)}</b></div>
         ${rows.map((r) => `<div><span>${esc(r.label.toUpperCase())}</span><b>${esc(r.text)}</b></div>`).join('')}
         <div><span>ACHIEVEMENTS</span><b>${ac.done} / ${ac.total}</b></div>
       </div>
       <div class="hero-btns"><button type="button" class="btn primary big" data-action="play" data-game="${g.id}" id="hero-play">▶ PLAY</button>
+        ${g.multiplayer ? `<button type="button" class="btn big" data-action="go" data-route="multiplayer">👥 Play together</button>` : ''}
         <button type="button" class="btn big" data-action="open" data-game="${g.id}">Details</button></div>
     </div>
     <div class="hero-art"><img src="${g.icon}" alt="" width="240" height="150"></div>`;
@@ -176,12 +182,32 @@ function dashboardHTML() {
   return html;
 }
 
+function shelfCard(g) {
+  return `<button type="button" class="sc" data-action="open" data-game="${g.id}" style="--accent:${g.theme.accent}"><img src="${g.icon}" alt="" width="240" height="150" loading="lazy"><span class="sc-t"><b>${esc(g.title)}</b><small>${g.multiplayer ? '👥 ' + esc(g.multiplayer.players) : esc(g.genre[0])}</small></span></button>`;
+}
+function shelvesHTML() {
+  const recent = save().profile.recent.map((r) => gameById(r.id)).filter(Boolean).slice(0, 6);
+  return SHELVES.map((sh) => {
+    const list = sh.id === 'continue' ? recent : sh.ids ? sh.ids.map(gameById).filter(Boolean) : GAMES.filter(sh.filter).filter((g) => !g.multiplayer || mpButtons(g));
+    if (!list.length) return '';
+    if (sh.id === 'featured') {
+      const g = list[0];
+      return `<section class="shelf featured" aria-label="Featured"><h3>${esc(sh.title)}</h3>
+        <div class="feat" style="--accent:${g.theme.accent}"><img src="${g.icon}" alt="" width="240" height="150"><div><small class="eyebrow">NEW · ${esc(g.genre.join(' • '))}</small><h2>${esc(g.title)}</h2><p>${esc(g.tagline)}</p>
+        ${g.multiplayer ? `<p class="hero-mp">👥 ${esc(g.multiplayer.players)} · ${g.multiplayer.modes.map(esc).join(' • ')}</p>` : ''}
+        <div class="hero-btns"><button type="button" class="btn primary" data-action="play" data-game="${g.id}">▶ Play</button>${g.multiplayer ? '<button type="button" class="btn" data-action="go" data-route="multiplayer">👥 Multiplayer</button>' : ''}</div></div></div></section>`;
+    }
+    return `<section class="shelf" aria-label="${esc(sh.title)}"><h3>${esc(sh.title)}</h3><div class="shelf-row">${list.map(shelfCard).join('')}</div></section>`;
+  }).join('');
+}
+
 function homeHTML() {
   const g = GAMES[sel] || GAMES[0];
   return `<div class="home">
     <section class="hero" id="hero" aria-live="polite">${heroHTML(g)}</section>
     <div class="carousel" id="carousel" role="listbox" aria-label="Games">${GAMES.map(cardHTML).join('')}</div>
-    <div class="dash">${dashboardHTML()}</div></div>`;
+    <div class="dash">${dashboardHTML()}</div>
+    <div class="shelves">${shelvesHTML()}</div></div>`;
 }
 
 function libCard(g) {
@@ -223,10 +249,75 @@ function detailHTML(g) {
           ${rows.filter((r) => r.label !== (g.records[0] || {}).label).slice(0, 3).map((r) => `<div><span>${esc(r.label.toUpperCase())}</span><b>${esc(r.text)}</b></div>`).join('')}
           <div><span>ACHIEVEMENTS</span><b>${ac.done} / ${ac.total}</b></div></div>
         <div class="controls-box"><h4>Controls</h4><ul>${g.controlsText.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>${inputChips(g)}</div>
+        ${g.multiplayer && mpButtons(g) ? `<div class="controls-box mp-box"><h4>Multiplayer · ${esc(g.multiplayer.players)}</h4><p class="muted">${g.multiplayer.modes.map(esc).join(' • ')}</p><div class="hero-btns">${mpButtons(g)}</div></div>` : ''}
         <div class="hero-btns"><button type="button" class="btn primary big" data-action="play" data-game="${g.id}" id="detail-play">▶ PLAY</button>
           <button type="button" class="btn big" data-action="howto" data-game="${g.id}">How to Play</button>
           <button type="button" class="btn big" data-action="game-ach" data-game="${g.id}">Achievements</button></div>
       </div></div></div>`;
+}
+
+// ------------------------------------------------------------------ multiplayer
+/** Buttons for a game's multiplayer options, driven entirely by its `multiplayer` config. Online ones only exist when realtime is configured. */
+function mpButtons(g) {
+  const mp = g.multiplayer;
+  if (!mp || !mp.supported) return '';
+  const online = onlineAvailable() && mp.online;
+  const b = (mode, label, primary) => `<button type="button" class="btn${primary ? ' primary' : ''}" data-action="mp" data-mode="${mode}" data-game="${g.id}">${label}</button>`;
+  return [online ? b('quick', 'Quick Play', true) : '', online ? b('create', 'Create Room') : '', online ? b('join', 'Join Room') : '', mp.local ? b('local', 'Local Play') : '', mp.bots ? b('bots', 'Play with Bots', !online) : ''].join('');
+}
+
+const STATUS_LABEL = { online: '🟢 ONLINE', lobby: '🟡 IN LOBBY', game: '🎮 IN GAME' };
+function onlineHTML(list) {
+  if (!onlineAvailable()) return '';
+  if (!user) return `<section class="panel"><h3>Online now</h3><p class="muted">Sign in to show up as online and see other players. Guests can still join rooms and use Quick Play.</p>${isConfigured() ? '<button type="button" class="btn" data-action="signin">Sign In</button>' : ''}</section>`;
+  if (save().settings.showOnline === false) return `<section class="panel"><h3>Online now</h3><p class="muted">Your online status is hidden. Turn it on in Settings to see who’s around.</p></section>`;
+  const shown = list.slice(0, 12);
+  return `<section class="panel" id="mp-online"><h3>Online now · ${list.length}</h3>${shown.length ? `<ul class="online-list">${shown.map((p) => `<li>${avatarHTML({ name: p.name, avatar: p.av, border: p.bd, size: 30 })}<b>${esc(p.name)}</b><small>Lv ${p.lv}</small><span class="st st-${esc(p.status)}">${STATUS_LABEL[p.status] || STATUS_LABEL.online}</span></li>`).join('')}</ul>${list.length > shown.length ? `<p class="muted">+${list.length - shown.length} more</p>` : ''}` : '<p class="muted">Nobody else is showing as online right now.</p>'}<p class="muted small">Only players who turned on online status are listed, with their public name. ⚫ Everyone else is offline.</p></section>`;
+}
+
+function multiplayerHTML() {
+  const mpGames = GAMES.filter((g) => g.multiplayer && g.multiplayer.supported);
+  const feat = mpGames.find((g) => g.featured) || mpGames[0];
+  const others = mpGames.filter((g) => g !== feat && mpButtons(g));
+  const online = onlineAvailable();
+  return `<div class="page mp"><header class="page-head"><h1>Multiplayer</h1><p class="muted">Play together, or against bots</p></header>
+    <section class="mp-hero" style="--accent:${feat.theme.accent}"><img src="${feat.icon}" alt="" width="240" height="150">
+      <div><small class="eyebrow">PLAY TOGETHER</small><h2>${esc(feat.title)}</h2><p class="hero-mp">👥 ${esc(feat.multiplayer.players)}</p><p class="muted">${feat.multiplayer.modes.map(esc).join(' • ')}</p>
+      <div class="hero-btns">${mpButtons(feat)}</div>
+      ${online ? '' : '<p class="mp-note">🌐 Online rooms and Quick Play need a realtime service, which isn’t set up on this copy of Pocket Arcade (README → Multiplayer Setup). Local play and bots work everywhere.</p>'}</div></section>
+    <div id="mp-online-host">${onlineHTML(presence.onlineList())}</div>
+    ${others.length ? `<h2 class="mp-h2">More multiplayer games</h2><div class="lib-grid">${others.map((g) => `<article class="lib" style="--accent:${g.theme.accent}"><button type="button" class="lib-main" data-action="open" data-game="${g.id}"><img src="${g.icon}" alt="" width="240" height="150"><h3>${esc(g.title)}</h3><p class="lib-genre">${esc(g.multiplayer.players)} · ${g.multiplayer.modes.map(esc).join(' • ')}</p></button><div class="mp-btns">${mpButtons(g)}</div></article>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+function launchMp(g, mode, code) {
+  sfx.unlock(); sfx.play('click');
+  location.href = `${g.path}${(g.multiplayer && g.multiplayer.page) || ''}?mp=${mode}${code ? `&code=${code}` : ''}`;
+}
+
+function openJoin(g, code = '') {
+  const m = openModal({ title: `Join a ${g.title} room`, html: `<p>Enter the 5-character code from the host.</p><div class="field"><label for="mp-code">Room code</label><div class="field-row"><input id="mp-code" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7P4Q" value="${esc(normalizeCode(code))}" style="font:900 1.4rem var(--mono);letter-spacing:.3em;text-transform:uppercase;text-align:center;padding:0 14px"></div><span class="err" id="mp-code-err" role="alert"></span></div><div class="p-btns"><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn primary" id="mp-go">Join</button></div>` });
+  const input = m.card.querySelector('#mp-code'), err = m.card.querySelector('#mp-code-err');
+  const go = () => { const c = normalizeCode(input.value); if (!isValidCode(c)) { err.textContent = ROOM_ERRORS.bad_code; input.setAttribute('aria-invalid', 'true'); input.focus(); return; } launchMp(g, 'join', c); };
+  input.addEventListener('input', () => { input.value = normalizeCode(input.value); err.textContent = ''; input.removeAttribute('aria-invalid'); });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+  m.card.querySelector('#mp-go').addEventListener('click', go);
+  setTimeout(() => input.focus(), 40);
+}
+
+function mpStatsHTML(s) {
+  const games = GAMES.filter((g) => g.stats);
+  const blocks = games.map((g) => {
+    const pg = s.profile.stats.perGame[g.id] || { counters: {} };
+    const data = (s.games && s.games[g.id]) || {};
+    const col = (title, rows) => {
+      const items = rows.map(([label, key]) => [label, pg.counters[key] || 0]).filter((r) => r[1] > 0);
+      return `<div><h5>${title}</h5>${items.length ? items.map(([l, v]) => `<div class="rec-row"><span>${esc(l)}</span><b>${formatScore(v)}</b></div>`).join('') : '<p class="muted small">Nothing yet</p>'}</div>`;
+    };
+    const esc_ = data.longestEscape > 0 ? `<div class="rec-row"><span>Longest escape</span><b>${data.longestEscape}s</b></div>` : '';
+    return `<div class="rec" style="--accent:${g.theme.accent}"><h4>${esc(g.title)}</h4><div class="mp-cols">${col('Solo', g.stats.solo)}${col('Multiplayer', g.stats.multi)}</div>${esc_}</div>`;
+  });
+  return `<section class="panel wide"><h3>Multiplayer &amp; solo stats</h3><div class="rec-grid">${blocks.join('') || '<p class="muted">Play a multiplayer game to see stats here.</p>'}</div></section>`;
 }
 
 function achItem(a, s) {
@@ -263,6 +354,7 @@ function profileHTML() {
     ${user ? '' : `<div class="nudge" role="note"><span aria-hidden="true">☁️</span><div><b>${isConfigured() ? 'Create a free account' : 'Guest mode'}</b> ${isConfigured() ? 'to keep this progress safe and sync it across devices.' : '— accounts aren’t configured on this site, but everything is saved locally.'}</div>${isConfigured() ? '<div class="nudge-btns"><button type="button" class="btn primary" data-action="signup">Create account</button><button type="button" class="btn" data-action="signin">Sign in</button></div>' : ''}</div>`}
     <section class="stat-row"><div><b>${formatScore(sm.gamesPlayed)}</b><span>Games played</span></div><div><b>${formatScore(p.stats.sessions)}</b><span>Play sessions</span></div><div><b>${formatScore(sm.totalScore)}</b><span>Total score</span></div><div><b>${sm.bestGame ? esc(sm.bestGame.title) : '—'}</b><span>Best game</span></div><div><b>${sm.achievements}/${sm.achievementsTotal}</b><span>Achievements</span></div></section>
     <section class="panel wide"><h3>Records</h3><div class="rec-grid">${recordsHTML(s, true)}</div></section>
+    ${mpStatsHTML(s)}
     <section class="panel wide"><h3>Game statistics</h3><div class="gstats">${GAMES.map((g) => { const pg = p.stats.perGame[g.id] || { plays: 0, totalScore: 0, xp: 0 }; return `<div class="gs-row" style="--accent:${g.theme.accent}"><b>${esc(g.title)}</b><span>${pg.plays} plays</span><span>${pg.xp} XP</span></div>`; }).join('')}</div></section>
     <section class="panel wide"><h3>Customize</h3>
       <h4>Title</h4><div class="opts">${opt(unlocked.titles, p.cosmetics.title, 'title')}${locked(TITLES, sm.info.level)}</div>
@@ -287,6 +379,10 @@ function settingsHTML() {
       ${toggleBtn('set-motion', 'Reduced motion', reduced(), 'Fewer animations and no screen shake')}
       ${toggleBtn('set-quick', 'Quick Launch', !!s.settings.quickLaunch, 'Selecting a game starts it immediately')}
       <div class="set-row"><div><b>Controller</b><small id="pad-state">${gp.isConnected() ? 'Controller connected: D-pad navigates, A selects, B goes back.' : 'No controller detected. Connect one and press any button.'}</small></div></div></section>
+    <section class="panel wide"><h3>Multiplayer</h3>
+      <div class="set-row"><div><b>Public display name</b><small>Shown to other players in rooms. Up to ${NAME_MAX} characters; never your email.</small></div><div class="name-edit"><input id="set-name" maxlength="${NAME_MAX}" autocomplete="off" spellcheck="false" value="${esc(getDisplayName())}" aria-label="Public display name"><button type="button" class="btn" data-action="save-name">Save</button></div></div>
+      ${onlineAvailable() && user ? toggleBtn('set-online', 'Show my online status', s.settings.showOnline !== false, 'Lets other players see when you’re online, in a lobby or in a game. Guests are never listed.') : ''}
+      ${onlineAvailable() ? '' : '<div class="set-row"><div><b>Online play</b><small>Not set up on this copy of Pocket Arcade (README → Multiplayer Setup). Local play and bots work everywhere.</small></div></div>'}</section>
     <section class="panel wide"><h3>Account</h3>${user ? `
       <div class="set-row"><div><b>${esc(user.name)}</b><small>${esc(user.email)} · ${user.provider === 'google' ? 'Google' : 'Email'} sign-in</small></div></div>
       <div class="set-row"><div><b>Cloud save</b><small id="sync-state">${esc(syncLabel || 'Synced automatically')}</small></div><button type="button" class="btn" data-action="sync-now">Sync now</button></div>
@@ -301,8 +397,10 @@ function settingsHTML() {
 
 // ------------------------------------------------------------------ render + transitions
 function parseRoute() {
-  const h = location.hash.replace(/^#\/?/, '');
+  const [hpath, hq] = location.hash.replace(/^#\/?/, '').split('?');
+  const h = hpath;
   const [name, arg] = h.split('/');
+  mpParams = hq ? new URLSearchParams(hq) : null;
   if (name === 'game' && gameBySlug(arg)) return { name: 'game', slug: arg };
   if (ROUTES.includes(name)) return { name };
   return { name: 'home' };
@@ -312,6 +410,7 @@ function html() {
   switch (route.name) {
     case 'library': return libraryHTML();
     case 'game': return detailHTML(gameBySlug(route.slug));
+    case 'multiplayer': return multiplayerHTML();
     case 'achievements': return achievementsHTML();
     case 'profile': return profileHTML();
     case 'settings': return settingsHTML();
@@ -330,6 +429,11 @@ function afterRender() {
   else setBackground(null);
   const t = route.name === 'game' ? gameBySlug(route.slug).title : NAV_TITLES[route.name];
   document.title = `${t} · Pocket Arcade`;
+  if (route.name === 'multiplayer' && mpParams && mpParams.get('code')) {
+    const g = gameById(mpParams.get('game')) || GAMES.find((x) => x.multiplayer && x.multiplayer.supported);
+    const code = mpParams.get('code'); mpParams = null;
+    if (g && onlineAvailable()) { history.replaceState(null, '', '#/multiplayer'); setTimeout(() => openJoin(g, code), 60); }
+  }
   const first = route.name === 'home' ? $('#hero-play') : route.name === 'game' ? $('#detail-play') : view.querySelector('.chip.on, .opt.on, button, a[href]');
   if (first && !hasModal() && document.activeElement !== first) first.focus({ preventScroll: true });
 }
@@ -448,6 +552,7 @@ async function handleUser(u, ev) {
     toast({ icon: '👋', title: 'Logged out', text: 'Your progress is saved to your account.', color: '#2de2e6' });
   }
   applyTheme(); renderAccount(); render({ instant: true });
+  if (user && !user.offline) presence.startPresence('online').catch(() => {}); else presence.stopPresence();
 }
 
 // ------------------------------------------------------------------ events
@@ -473,6 +578,9 @@ document.addEventListener('click', async (e) => {
     case 'filter': filter = t.dataset.cat; render({ instant: true }); { const c = view.querySelector('.chip.on'); if (c) c.focus(); } break;
     case 'ach-filter': achFilter = t.dataset.id; render({ instant: true }); { const c = view.querySelector('.chip.on'); if (c) c.focus(); } break;
     case 'howto': if (g) showHowTo(g); break;
+    case 'mp': if (g) { const mode = t.dataset.mode; if (mode === 'join') openJoin(g); else launchMp(g, mode); } break;
+    case 'save-name': { const inp = $('#set-name'); const v = sanitizeName(inp ? inp.value : ''); if (!v) { toast({ icon: '⚠️', title: 'Please enter a name', color: '#ff8a3d' }); break; } setDisplayName(v); if (inp) inp.value = v; toast({ icon: '✅', title: 'Name saved', text: v, color: '#5dff8f' }); break; }
+    case 'set-online': { const v = !(save().settings.showOnline !== false); store.setSetting('showOnline', v); t.classList.toggle('on', v); t.setAttribute('aria-checked', String(v)); if (v) presence.startPresence('online'); else presence.stopPresence(); break; }
     case 'game-ach': if (g) showGameAch(g); break;
     case 'back': history.length > 1 && prevRoute ? go(prevRoute) : go('library'); break;
     case 'go': closeAcctMenu(); go(t.dataset.route); break;
@@ -549,6 +657,7 @@ gp.onConnectionChange((c) => {
 });
 
 store.subscribe(() => { /* keep header chip in sync with cosmetic changes */ });
+presence.onPresenceChange((list) => { const host = $('#mp-online-host'); if (host && route.name === 'multiplayer') host.innerHTML = onlineHTML(list); });
 cloud.onStatus((s) => {
   syncLabel = s.state === 'ok' ? `Synced ${new Date(s.last).toLocaleTimeString()}` : s.state === 'syncing' ? 'Syncing…' : s.state === 'offline' ? 'Offline: will sync when you reconnect' : s.state === 'error' ? 'Sync problem: retrying' : '';
   const el = $('#sync-state'); if (el && syncLabel) el.textContent = syncLabel;

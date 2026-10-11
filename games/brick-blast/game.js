@@ -4,6 +4,15 @@ import { Particles, Popups, Shake } from '../../js/fx.js';
 import { canvasPoint } from '../../js/input.js';
 import { clamp, damp, formatScore, rand, TAU, roundRectPath, circleRect } from '../../js/util.js';
 import { LEVELS } from './levels.js';
+import { createMpKit, standingsHTML, rankText, PeerBoard } from '../../js/mp-kit.js';
+import { identity } from '../../js/multiplayer.js';
+import { esc } from '../../js/ui.js';
+
+// ---- Brick Battle: every player gets the identical bricks and capsule drops (derived from a shared seed, so what
+// you do can't change what the others see), then scores are compared. Online = all play at once; local = pass and play.
+const MPQ = new URLSearchParams(location.search).has('mp');
+const MP = { on: false, kind: null, fresh: false, seed: 0, cd: 0, board: null, room: null, kit: null, locals: null, info: null, ended: false, offs: [] };
+const hash01 = (a, b, c) => { let h = (a ^ Math.imul(b + 1, 0x9e3779b1) ^ Math.imul(c + 7, 0x85ebca6b)) >>> 0; h = Math.imul(h ^ (h >>> 16), 0x7feb352d); h = Math.imul(h ^ (h >>> 15), 0x846ca68b); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
 const W = 480, H = 640;
 const COLS = 9, BW = 48, BH = 20, GAP = 4, OX = 8, OY = 64;
@@ -78,6 +87,7 @@ const shell = createShell({
   update,
   ambient(dt) { fx.update(dt); pops.update(dt); shake.update(dt); G.t += dt; },
   render,
+  ...(MPQ ? { customStart: true, onReady: mpReady, livePause: () => MP.kind === 'online', pauseHTML: mpPauseHTML, onAct: mpAct } : {}),
 });
 
 // ---------------------------------------------------------------- setup
@@ -85,6 +95,7 @@ const levelSpeed = () => Math.min(580, 340 + (G.level - 1) * 26);
 const padWidth = () => Math.max(66, 94 - (G.level - 1) * 5);
 
 function reset() {
+  if (MP.on && MP.fresh) { MP.fresh = false; MP.ended = false; MP.cd = MP.kind === 'online' ? 3.2 : 0; }
   G.level = 1; G.score = 0; G.lives = 3; G.combo = 0; G.over = false; G.t = 0; G.lost = 0; G.bricksBroken = 0; G.flash = 0;
   G.perfect = false; G.levelLost = false; G.maxCombo = 0; G.pickups = 0;
   G.fxT.wide = G.fxT.slow = 0; G.transition = 0; G.banner = null; G.hitCount = 0;
@@ -106,7 +117,7 @@ function buildLevel(n) {
       const b = {
         x: OX + c * (BW + GAP), y: OY + r * (BH + GAP), w: BW, h: BH,
         type: ch === '#' ? 'wall' : ch === 'B' ? 'bonus' : ch === '2' ? 'strong' : 'normal',
-        hp: ch === '2' ? 2 : ch === '#' ? 99 : 1, color: PALETTE[r % PALETTE.length], drop: ch === 'B' || (ch !== '#' && Math.random() < 0.1), flash: 0,
+        hp: ch === '2' ? 2 : ch === '#' ? 99 : 1, color: PALETTE[r % PALETTE.length], drop: ch === 'B' || (ch !== '#' && (MP.on ? hash01(MP.seed, n, r * COLS + c) : Math.random()) < 0.1), key: r * COLS + c, flash: 0,
       };
       b.max = b.hp;
       if (b.type !== 'wall') G.remaining++;
@@ -148,6 +159,7 @@ function speed() {
 
 // ---------------------------------------------------------------- update
 function update(dt) {
+  if (MP.on && !mpStep(dt)) return;
   const i = shell.input;
   G.t += dt;
   const pad = G.pad;
@@ -286,7 +298,7 @@ function damage(br) {
   shake.kick(br.type === 'strong' ? 2 : 1);
   if (mult > 1 && G.combo % 4 === 1) pops.add(cx, cy, `COMBO x${mult}`, '#ffe14d', 14);
   else if (G.bricksBroken % 3 === 0) pops.add(cx, cy, `+${pts}`, '#fff', 12);
-  if (br.drop) spawnDrop(cx, cy);
+  if (br.drop) spawnDrop(cx, cy, br.key);
   hud();
   if (G.remaining <= 0) levelClear();
 }
@@ -297,10 +309,10 @@ const DROPS = [
   { id: 'slow', color: '#8b5cff', label: 'S', w: 2 },
   { id: 'life', color: '#ff3c6e', label: '+', w: 1 },
 ];
-function spawnDrop(x, y) {
+function spawnDrop(x, y, key = 0) {
   let total = 0;
   for (const d of DROPS) total += (d.id === 'life' && G.lives >= 5) ? 0 : d.w;
-  let r = Math.random() * total, pick = DROPS[0];
+  let r = (MP.on ? hash01(MP.seed ^ 0x5bd1e995, G.level, key) : Math.random()) * total, pick = DROPS[0];
   for (const d of DROPS) { const w = (d.id === 'life' && G.lives >= 5) ? 0 : d.w; r -= w; if (r <= 0) { pick = d; break; } }
   G.drops.push({ x, y, t: pick });
 }
@@ -355,6 +367,7 @@ function levelClear() {
 function end(win) {
   if (G.over) return;
   G.over = true;
+  if (MP.on) { mpEnd(win); return; }
   shell.finish({
     win, title: win ? 'You Win!' : 'Game Over', subtitle: win ? 'Every level cleared!' : `Out of lives on level ${G.level}`,
     score: G.score,
@@ -475,3 +488,142 @@ function shade(hex) {
 }
 
 window.__brick = { G, shell };
+
+
+// ================================================================ Brick Battle
+const MP_CFG = { supported: true, minPlayers: 2, maxPlayers: 4, bots: false, local: true, online: true };
+let waitEl = null;
+
+function mpReady(sh) {
+  MP.kit = createMpKit({
+    shell: sh, game: { id: 'brickBlast', title: 'Brick Blast', accent: '#ffe14d', mp: MP_CFG, players: '2–4 players · same bricks, highest score wins' },
+    schema: [], defaults: {}, localMax: 4, settingsKey: 'bb.cfg',
+    localHelp: 'Pass and play: everyone plays the same bricks in turn on this device.',
+    hostExtra: () => ({ seed: (Math.random() * 4294967296) >>> 0 }),
+    onStart: mpStart,
+  });
+  MP.kit.start();
+  window.__bbmp = { MP, G, end, get kit() { return MP.kit; } };
+}
+
+function mpStart(info) {
+  mpCleanup();
+  MP.on = true; MP.kind = info.kind === 'online' ? 'online' : 'local'; MP.info = info; MP.fresh = true; MP.ended = false;
+  MP.seed = (info.kind === 'online' ? ((info.extra && info.extra.seed) >>> 0) : (Math.random() * 4294967296) >>> 0) || 1;
+  MP.kit.clearNotice();
+  if (MP.kind === 'online') {
+    MP.room = info.room;
+    MP.board = new PeerBoard(info.room, info.roster.slice(0, 4), { stage: shell.stage, fmt: (p) => `${p.aux.l ? `L${p.aux.l} · ` : ''}${p.score}${p.done ? ' ✓' : ''}` });
+    MP.offs = [MP.kit.wire(info.room, { onClosed: () => { if (MP.on) mpLeave(); } })];
+    MP.kit.setStatus('game');
+  } else {
+    const me = identity();
+    MP.locals = { n: info.humans, turn: 0, scores: [], names: Array.from({ length: info.humans }, (_, i) => (i === 0 ? me.name : `Player ${i + 1}`)) };
+  }
+  shell.restart();
+  if (MP.kind === 'local') G.banner = `${MP.locals.names[0].toUpperCase()} · YOUR TURN`, G.bannerT = 2;
+}
+
+function mpStep(dt) {
+  if (MP.kind !== 'online') return true;
+  MP.board.ui(dt);
+  if (MP.cd > 0) {
+    const before = Math.ceil(MP.cd);
+    MP.cd -= dt;
+    if (Math.ceil(MP.cd) !== before) shell.sfx.play(MP.cd > 0 ? 'tick' : 'go');
+    fx.update(dt); pops.update(dt); shake.update(dt);
+    return false;
+  }
+  MP.board.update(dt, { done: G.over, score: G.score, aux: { l: G.level, v: G.lives } });
+  if (!MP.ended) {
+    const others = MP.board.others, best = Math.max(0, ...others.map((p) => p.score));
+    if (G.over && MP.board.allOthersDone) mpFinish();
+    else if (!G.over && MP.board.allOthersDone && G.score > best) { G.over = true; mpFinish(); }       // clinched: nobody is left to beat
+  }
+  if (waitEl && !MP.ended) { const left = MP.board.others.filter((p) => !p.done).length; waitEl.textContent = `You finished with ${formatScore(G.score)} · waiting for ${left} more player${left === 1 ? '' : 's'}`; }
+  return true;
+}
+
+function mpEnd() {
+  if (MP.kind === 'online') {
+    MP.board.update(0, { done: true, score: G.score, aux: { l: G.level, v: G.lives } });
+    if (!waitEl) { waitEl = document.createElement('div'); waitEl.className = 'mp-wait'; shell.stage.appendChild(waitEl); }
+    return;
+  }
+  const L = MP.locals;
+  L.scores[L.turn] = { score: G.score, level: G.level, stats: { bricks: G.bricksBroken, perfect: G.perfect, combo: G.maxCombo } };
+  L.turn++;
+  if (L.turn >= L.n) { mpFinish(); return; }
+  const next = L.names[L.turn];
+  shell.modal(`<h2 id="g-panel-title">${esc(next)}, you’re up!</h2><p class="p-sub">${esc(L.names[L.turn - 1])} scored <b>${formatScore(G.score)}</b> (level ${G.level}). Same bricks, same power-ups. Beat it!</p><div class="p-btns"><button type="button" class="g-btn primary big" data-modal="go">GO</button></div>`, (a) => {
+    if (a !== 'go') return;
+    shell.closeModal(); MP.fresh = true; shell.restart();
+    G.banner = `${next.toUpperCase()} · YOUR TURN`; G.bannerT = 2;
+  });
+}
+
+function mpFinish() {
+  if (MP.ended) return;
+  MP.ended = true;
+  if (MP.kind === 'online') MP.board.update(0, { done: true, score: G.score, aux: { l: G.level, v: G.lives } });   // tell everyone we're done (also when we clinched the win)
+  if (waitEl) { waitEl.remove(); waitEl = null; }
+  let list, myIdx = 0;
+  if (MP.kind === 'online') { list = MP.board.ranking().map((p) => ({ name: p.name, score: p.score, me: p.me })); myIdx = list.findIndex((p) => p.me); }
+  else { list = MP.locals.scores.map((r, i) => ({ name: MP.locals.names[i], score: r.score, me: i === 0, i })).sort((a, b) => b.score - a.score); myIdx = list.findIndex((p) => p.me); }
+  const rank = myIdx + 1, n = list.length;
+  const win = rank === 1 && (n < 2 || list[0].score > list[1].score || MP.kind === 'online');
+  const online = MP.kind === 'online';
+  const myScore = online ? G.score : MP.locals.scores[0].score;
+  shell.finish({
+    win, title: 'MATCH OVER', subtitle: `You finished ${rankText(rank)} of ${n}`, score: myScore, delay: 800,
+    facts: { score: myScore, battle: true, win, players: n, ...(online ? { level: G.level, won: false, bricks: G.bricksBroken, perfectLevel: G.perfect, combo: G.maxCombo } : {}) },
+    counters: { bbMatches: 1, bbWins: win ? 1 : 0, ...(online ? { bricks: G.bricksBroken, powerups: G.pickups } : {}) },
+    milestones: [...(win ? [['Won the battle', 20]] : []), ['Played with others', 10]],
+    summary: `Brick Battle · ${rankText(rank)} of ${n}`,
+    stats: [['Your score', formatScore(myScore)], ['Players', String(n)], ['Placement', rankText(rank)]],
+    extraHTML: standingsHTML(list.map((p) => ({ name: p.name, text: formatScore(p.score), me: p.me })), 'Standings'),
+    buttonsHTML: '<button type="button" class="g-btn primary big" data-act="bb-again">PLAY AGAIN</button><button type="button" class="g-btn" data-act="bb-lobby">RETURN TO LOBBY</button><a class="g-btn" href="../../index.html">ARCADE HOME</a>',
+  });
+  if (online) MP.kit.setStatus('lobby');
+}
+
+function mpCleanup() {
+  MP.offs.forEach((f) => { try { f(); } catch (e) { /* ignore */ } }); MP.offs = [];
+  if (MP.board) { MP.board.dispose(); MP.board = null; }
+  if (waitEl) { waitEl.remove(); waitEl = null; }
+}
+
+function mpLeave() {
+  const room = MP.room;
+  MP.on = false; MP.room = null; MP.fresh = false; MP.kind = null;
+  mpCleanup();
+  if (room && !room.closed) room.leave().catch(() => {});
+  MP.kit.conn(undefined);
+  shell.toReady();
+  MP.kit.setStatus('online');
+  MP.kit.lobby.openMenu();
+}
+
+function mpAct(act) {
+  const info = MP.info;
+  if (act === 'bb-again') {
+    if (MP.kind === 'online') { const room = MP.room; MP.on = false; MP.kind = null; mpCleanup(); MP.kit.conn(undefined); shell.toReady(); MP.kit.setStatus('lobby'); MP.kit.lobby.backToRoom(room, { ready: true }); }
+    else mpStart({ kind: 'local', settings: {}, humans: info.humans });
+    return true;
+  }
+  if (act === 'bb-lobby') {
+    if (MP.kind === 'online') { const room = MP.room; MP.on = false; MP.kind = null; mpCleanup(); MP.kit.conn(undefined); shell.toReady(); MP.kit.setStatus('lobby'); MP.kit.lobby.backToRoom(room, { ready: false }); }
+    else mpLeave();
+    return true;
+  }
+  if (act === 'bb-leave') { mpLeave(); return true; }
+  if (act === 'restart') { if (MP.kind === 'local') mpStart({ kind: 'local', settings: {}, humans: info.humans }); return true; }
+  return false;
+}
+
+function mpPauseHTML() {
+  const online = MP.kind === 'online';
+  return `<h2 id="g-panel-title">${online ? 'Menu' : 'Paused'}</h2>${online ? '<p class="p-sub">The match keeps going while this menu is open.</p>' : ''}
+    <div class="p-menu"><button type="button" class="g-btn primary big" data-act="resume">Resume</button>${online ? '' : '<button type="button" class="g-btn" data-act="restart">Restart match</button>'}<button type="button" class="g-btn" data-act="help">How to play</button>
+    <button type="button" class="g-btn" data-act="mute">${shell.store.isMuted() ? 'Sound: OFF' : 'Sound: ON'}</button><button type="button" class="g-btn" data-act="bb-leave">${online ? 'Leave match' : 'Quit to lobby'}</button><a class="g-btn" href="../../index.html">Arcade Home</a></div>`;
+}
